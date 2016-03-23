@@ -1,4 +1,4 @@
-    /**
+/**
  * Copyright (c) Codice Foundation
  * <p>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
@@ -15,18 +15,14 @@
 package org.codice.ddf.spatial.geocoder.endpoint;
 
 import static org.hamcrest.CoreMatchers.is;
-
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import javax.ws.rs.core.Response;
-
 import org.codice.ddf.spatial.geocoder.GeoCoder;
 import org.codice.ddf.spatial.geocoder.GeoResult;
 import org.codice.ddf.spatial.geocoder.GeoResultCreator;
-import org.codice.ddf.spatial.geocoding.context.NearbyLocation;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,18 +30,12 @@ import ddf.catalog.util.impl.ServiceSelector;
 
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
-import net.minidev.json.parser.JSONParser;
-import net.minidev.json.parser.ParseException;
 
 public class TestGeoCoderEndpoint {
-
     private ServiceSelector<GeoCoder> mockGeoCoderFactory;
     private GeoCoder mockGeoCoder;
     private GeoResult geoResult;
     private GeoCoderEndpoint geoCoderEndpoint;
-    private NearbyLocation nearbyLocation;
-
-    private JSONParser jsonParser = new JSONParser(JSONParser.MODE_JSON_SIMPLE);
 
     @Before
     public void setUp() {
@@ -56,14 +46,6 @@ public class TestGeoCoderEndpoint {
 
         when(mockGeoCoderFactory.getService()).thenReturn(mockGeoCoder);
         when(mockGeoCoder.getLocation(anyString())).thenReturn(geoResult);
-
-        nearbyLocation = mock(NearbyLocation.class);
-        when(nearbyLocation.getName()).thenReturn("Phoenix");
-        when(nearbyLocation.getDistance()).thenReturn(23.45);
-        when(nearbyLocation.getCardinalDirection()).thenReturn("N");
-
-        when(mockGeoCoder.getNearbyCity(anyString())).thenReturn(nearbyLocation);
-        when(mockGeoCoder.getNearbyCity(null)).thenReturn(null);
     }
 
 
@@ -97,29 +79,6 @@ public class TestGeoCoderEndpoint {
         assertThat(coordinates.size(), is(2));
     }
 
-    @Test
-    public void testNearbyLocation() throws ParseException {
-        Response response = geoCoderEndpoint.getNearbyCities("POINT(10 30)");
-
-        if (response != null) {
-            String responseString = (String)response.getEntity();
-            if (responseString != null) {
-                JSONObject jsonObject = (JSONObject)jsonParser.parse(responseString);
-
-                assertThat(jsonObject.get("name"), is("Phoenix"));
-                assertThat(jsonObject.get("direction"), is("N"));
-                assertThat(jsonObject.get("distance"), is(23.45));
-            }
-        }
-    }
-
-    @Test
-    public void testNullNearbyLocation() {
-        Response response = geoCoderEndpoint.getNearbyCities(null);
-        assertThat(response.getStatus(), is(Response.Status.NO_CONTENT.getStatusCode()));
-    }
-
-
     private GeoCoder buildMockGeoCoder() {
         return mock(GeoCoder.class);
     }
@@ -135,6 +94,4 @@ public class TestGeoCoderEndpoint {
                 featureCode, population);
         return geoResult;
     }
-
-
 }

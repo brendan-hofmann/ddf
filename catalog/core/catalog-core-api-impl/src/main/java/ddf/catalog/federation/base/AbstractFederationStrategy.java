@@ -276,7 +276,7 @@ public abstract class AbstractFederationStrategy implements FederationStrategy {
         }
     }
 
-    private static class CallableSourceResponse implements Callable<SourceResponse> {
+    private class CallableSourceResponse implements Callable<SourceResponse> {
 
         private Query query = null;
 
@@ -304,7 +304,7 @@ public abstract class AbstractFederationStrategy implements FederationStrategy {
 
     }
 
-    private static class OffsetResultHandler implements Runnable {
+    private class OffsetResultHandler implements Runnable {
 
         private QueryResponseImpl originalResults = null;
 

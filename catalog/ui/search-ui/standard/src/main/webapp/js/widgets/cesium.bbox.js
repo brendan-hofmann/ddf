@@ -60,8 +60,9 @@ define([
             setModelFromClicks: function (mn, mx) {
 
                 var e = new Cesium.Rectangle(),
-                    epsilon = Cesium.Math.EPSILON6,
+                    epsilon = Cesium.Math.EPSILON7,
                     modelProps;
+
 
                 if (!this.lastLongitude) {
                     this.crossDateLine = false;

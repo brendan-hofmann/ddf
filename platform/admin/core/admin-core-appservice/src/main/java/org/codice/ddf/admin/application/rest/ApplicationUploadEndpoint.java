@@ -59,7 +59,7 @@ public class ApplicationUploadEndpoint {
 
     private final ApplicationService appService;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationUploadEndpoint.class);
+    private Logger logger = LoggerFactory.getLogger(ApplicationUploadEndpoint.class);
 
     public ApplicationUploadEndpoint(ApplicationService appService) {
         this.appService = appService;
@@ -69,7 +69,7 @@ public class ApplicationUploadEndpoint {
     @Path("/update")
     @Produces("application/json")
     public Response update(MultipartBody multipartBody, @Context UriInfo requestUriInfo) {
-        LOGGER.trace("ENTERING: update");
+        logger.trace("ENTERING: update");
 
         Response response = null;
 
@@ -116,13 +116,13 @@ public class ApplicationUploadEndpoint {
                         .type("application/json");
                 response = responseBuilder.build();
             } catch (ApplicationServiceException e) {
-                LOGGER.error("Unable to update an application on the server: {}", newFile, e);
+                logger.error("Unable to update an application on the server: " + newFile, e);
                 Response.ResponseBuilder responseBuilder = Response.serverError();
                 response = responseBuilder.build();
             }
         }
 
-        LOGGER.trace("EXITING: update");
+        logger.trace("EXITING: update");
 
         return response;
     }
@@ -130,7 +130,7 @@ public class ApplicationUploadEndpoint {
     @POST
     @Path("/")
     public Response create(MultipartBody multipartBody, @Context UriInfo requestUriInfo) {
-        LOGGER.trace("ENTERING: create");
+        logger.trace("ENTERING: create");
 
         Response response = null;
 
@@ -149,13 +149,13 @@ public class ApplicationUploadEndpoint {
                 Response.ResponseBuilder responseBuilder = Response.ok();
                 response = responseBuilder.build();
             } catch (ApplicationServiceException e) {
-                LOGGER.error("Unable to add the application to the server: " + newFile, e);
+                logger.error("Unable to add the application to the server: " + newFile, e);
                 Response.ResponseBuilder responseBuilder = Response.serverError();
                 response = responseBuilder.build();
             }
         }
 
-        LOGGER.trace("EXITING: create");
+        logger.trace("EXITING: create");
 
         return response;
     }
@@ -180,11 +180,11 @@ public class ApplicationUploadEndpoint {
         }
 
         if (StringUtils.isEmpty(filename)) {
-            LOGGER.debug("Filename not found, using default.");
+            logger.debug("Filename not found, using default.");
             filename = DEFAULT_FILE_NAME;
         } else {
             filename = FilenameUtils.getName(filename);
-            LOGGER.debug("Filename: {}", filename);
+            logger.debug("Filename: {}", filename);
         }
 
         try {
@@ -193,7 +193,9 @@ public class ApplicationUploadEndpoint {
                 inputStream.reset();
             }
         } catch (IOException e) {
-            LOGGER.warn("IOException reading stream from file attachment in multipart body", e);
+            logger.warn("IOException reading stream from file attachment in multipart body", e);
+            Response.ResponseBuilder responseBuilder = Response.serverError();
+            response = responseBuilder.build();
             IOUtils.closeQuietly(inputStream);
         }
 
@@ -202,9 +204,7 @@ public class ApplicationUploadEndpoint {
                 try {
                     File uploadDir = new File(defaultFileLocation);
                     if (!uploadDir.exists()) {
-                        if(uploadDir.mkdirs()) {
-                            LOGGER.warn("Unable to make directory");
-                        }
+                        uploadDir.mkdirs();
                     }
 
                     newFile = new File(uploadDir, filename);
@@ -212,18 +212,23 @@ public class ApplicationUploadEndpoint {
                     FileUtils.copyInputStreamToFile(inputStream, newFile);
 
                 } catch (IOException e) {
-                    LOGGER.warn("Unable to write file.", e);
-                    newFile = null;
+                    logger.warn("Unable to write file.", e);
+                    Response.ResponseBuilder responseBuilder = Response.serverError();
+                    response = responseBuilder.build();
                 } finally {
                     IOUtils.closeQuietly(inputStream);
                 }
             } else {
-                LOGGER.debug("No file attachment found");
+                logger.debug("No file attachment found");
+                Response.ResponseBuilder responseBuilder = Response.serverError();
+                response = responseBuilder.build();
+                IOUtils.closeQuietly(inputStream);
             }
         } else {
-            LOGGER.debug("Wrong file type.");
+            logger.debug("Wrong file type.");
             Response.ResponseBuilder responseBuilder = Response.serverError();
             responseBuilder.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE_415);
+            response = responseBuilder.build();
             IOUtils.closeQuietly(inputStream);
         }
         return newFile;
