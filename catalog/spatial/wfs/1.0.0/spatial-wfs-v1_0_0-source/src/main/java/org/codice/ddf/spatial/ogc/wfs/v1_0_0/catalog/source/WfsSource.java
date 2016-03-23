@@ -100,6 +100,7 @@ import ddf.catalog.source.UnsupportedQueryException;
 import ddf.catalog.transform.CatalogTransformerException;
 import ddf.catalog.util.impl.MaskableImpl;
 import ddf.security.service.SecurityServiceException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import ogc.schema.opengis.filter.v_1_0_0.FilterType;
 import ogc.schema.opengis.wfs.v_1_0_0.GetFeatureType;
 import ogc.schema.opengis.wfs.v_1_0_0.ObjectFactory;
@@ -204,7 +205,7 @@ public class WfsSource extends MaskableImpl
 
     private Set<SourceMonitor> sourceMonitors = new HashSet<SourceMonitor>();
 
-    private SecureCxfClientFactory factory;
+    private SecureCxfClientFactory<Wfs> factory;
 
     protected String configurationPid;
 
@@ -257,8 +258,7 @@ public class WfsSource extends MaskableImpl
         String wfsUrl = (String) configuration.get(WFSURL_PROPERTY);
         String password = (String) configuration.get(PASSWORD_PROPERTY);
         String username = (String) configuration.get(USERNAME_PROPERTY);
-        Boolean disableCnCheckProp = (Boolean) configuration
-                .get(DISABLE_CN_CHECK_PROPERTY);
+        Boolean disableCnCheckProp = (Boolean) configuration.get(DISABLE_CN_CHECK_PROPERTY);
         String id = (String) configuration.get(ID_PROPERTY);
 
         setConnectionTimeout((Integer) configuration.get(CONNECTION_TIMEOUT_PROPERTY));
@@ -305,8 +305,14 @@ public class WfsSource extends MaskableImpl
 
     /* This method should only be called after all properties have been set. */
     private void createClientFactory() {
-        factory = new SecureCxfClientFactory(wfsUrl, Wfs.class, initProviders(),
-                new MarkableStreamInterceptor(), this.disableCnCheck);
+        if (StringUtils.isNotBlank(username) && StringUtils.isNotBlank(password)) {
+            factory = new SecureCxfClientFactory(wfsUrl, Wfs.class, initProviders(),
+                    new MarkableStreamInterceptor(), this.disableCnCheck, false, null, null,
+                    username, password);
+        } else {
+            factory = new SecureCxfClientFactory(wfsUrl, Wfs.class, initProviders(),
+                    new MarkableStreamInterceptor(), this.disableCnCheck, false);
+        }
     }
 
     private List<? extends Object> initProviders() {
@@ -340,6 +346,7 @@ public class WfsSource extends MaskableImpl
         return !StringUtils.equals(this.username, username);
     }
 
+    @SuppressFBWarnings("RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN")
     private boolean hasDisableCnCheck(Boolean disableCnCheck) {
         return this.disableCnCheck != disableCnCheck;
     }
@@ -390,7 +397,7 @@ public class WfsSource extends MaskableImpl
 
     private WFSCapabilitiesType getCapabilities() throws SecurityServiceException {
         WFSCapabilitiesType capabilities = null;
-        Wfs wfs = getClient();
+        Wfs wfs = factory.getClient();
         try {
             capabilities = wfs.getCapabilities(new GetCapabilitiesRequest());
         } catch (WfsException wfse) {
@@ -441,7 +448,7 @@ public class WfsSource extends MaskableImpl
         // Use local Map for metacardtype registrations and once they are populated with latest
         // MetacardTypes, then do actual registration
         Map<String, MetacardTypeRegistration> mcTypeRegs = new HashMap<String, MetacardTypeRegistration>();
-        Wfs wfs = getClient();
+        Wfs wfs = factory.getClient();
 
         for (FeatureTypeType featureTypeType : featureTypes) {
             String ftName = featureTypeType.getName().getLocalPart();
@@ -531,13 +538,15 @@ public class WfsSource extends MaskableImpl
         unregisterAllMetacardTypes();
         this.featureTypeFilters.clear();
         if (!mcTypeRegs.isEmpty()) {
-            for (String ftName : mcTypeRegs.keySet()) {
-                MetacardTypeRegistration mcTypeReg = mcTypeRegs.get(ftName);
+            Set<Entry<String, MetacardTypeRegistration>> entries = mcTypeRegs.entrySet();
+
+            for (Map.Entry<String, MetacardTypeRegistration> entry : mcTypeRegs.entrySet()) {
+                MetacardTypeRegistration mcTypeReg = entry.getValue();
                 FeatureMetacardType ftMetacard = mcTypeReg.getFtMetacard();
                 ServiceRegistration serviceRegistration = context
                         .registerService(MetacardType.class.getName(), ftMetacard,
                                 mcTypeReg.getProps());
-                this.metacardTypeServiceRegistrations.put(ftName, serviceRegistration);
+                this.metacardTypeServiceRegistrations.put(entry.getKey(), serviceRegistration);
                 this.featureTypeFilters.put(ftMetacard.getFeatureType(),
                         new WfsFilterDelegate(ftMetacard, supportedGeo, mcTypeReg.getSrs()));
             }
@@ -565,14 +574,7 @@ public class WfsSource extends MaskableImpl
 
     @Override
     public SourceResponse query(QueryRequest request) throws UnsupportedQueryException {
-
-        Wfs wfs = null;
-        try {
-            wfs = getClient();
-        } catch (SecurityServiceException sse) {
-            throw new UnsupportedQueryException(
-                    "Could not get a client to connect to the endpointUrl.", sse);
-        }
+        Wfs wfs = factory.getClient();
 
         Query query = request.getQuery();
         LOGGER.debug("WFS Source {}: Received query: \n{}", getId(), query);
@@ -658,7 +660,7 @@ public class WfsSource extends MaskableImpl
                 results.add(result);
                 debugResult(result);
             }
-            Long totalHits = new Long(featureCollection.getFeatureMembers().size());
+            Long totalHits = Long.valueOf(featureCollection.getFeatureMembers().size());
             simpleResponse = new SourceResponseImpl(request, results, totalHits);
         } catch (WfsException wfse) {
             LOGGER.warn(WFS_ERROR_MESSAGE, wfse);
@@ -990,7 +992,7 @@ public class WfsSource extends MaskableImpl
         }
     }
 
-    private class MetacardTypeRegistration {
+    private static class MetacardTypeRegistration {
 
         private FeatureMetacardType ftMetacard;
 
@@ -1064,22 +1066,5 @@ public class WfsSource extends MaskableImpl
             return newAvailability;
         }
 
-    }
-
-    /**
-     * Creates a new WFS client using basic auth, if possible.
-     *
-     * @return a new secure WFS client form either basicAuth or an insecure client.
-     * @throws SecurityServiceException
-     */
-    private Wfs getClient() throws SecurityServiceException {
-        Wfs wfs;
-
-        if (StringUtils.isNotEmpty(username) && StringUtils.isNotEmpty(password)) {
-            wfs = (Wfs) factory.getClientForBasicAuth(username, password);
-        } else {
-            wfs = (Wfs) factory.getUnsecuredClient();
-        }
-        return wfs;
     }
 }

@@ -25,24 +25,19 @@ import javax.xml.transform.OutputKeys;
 
 import org.codice.ddf.platform.util.TransformerProperties;
 import org.codice.ddf.platform.util.XMLUtils;
-import org.opensaml.Configuration;
-import org.opensaml.saml2.core.Assertion;
-import org.opensaml.saml2.core.AttributeQuery;
-import org.opensaml.saml2.core.Response;
-import org.opensaml.saml2.core.Status;
-import org.opensaml.ws.soap.soap11.Body;
-import org.opensaml.ws.soap.soap11.Envelope;
-import org.opensaml.ws.soap.soap11.Header;
-import org.opensaml.ws.soap.soap11.impl.BodyBuilder;
-import org.opensaml.ws.soap.soap11.impl.EnvelopeBuilder;
-import org.opensaml.ws.soap.soap11.impl.EnvelopeMarshaller;
-import org.opensaml.ws.soap.soap11.impl.HeaderBuilder;
-import org.opensaml.xml.XMLObjectBuilderFactory;
-import org.opensaml.xml.io.MarshallingException;
-import org.opensaml.xml.io.Unmarshaller;
-import org.opensaml.xml.io.UnmarshallingException;
-import org.opensaml.xml.signature.SignatureException;
-import org.opensaml.xml.signature.Signer;
+import org.opensaml.core.xml.XMLObjectBuilderFactory;
+import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
+import org.opensaml.core.xml.io.MarshallingException;
+import org.opensaml.core.xml.io.Unmarshaller;
+import org.opensaml.core.xml.io.UnmarshallingException;
+import org.opensaml.saml.saml2.core.Assertion;
+import org.opensaml.saml.saml2.core.AttributeQuery;
+import org.opensaml.saml.saml2.core.Response;
+import org.opensaml.saml.saml2.core.Status;
+import org.opensaml.soap.soap11.Envelope;
+import org.opensaml.soap.soap11.impl.EnvelopeMarshaller;
+import org.opensaml.xmlsec.signature.support.SignatureException;
+import org.opensaml.xmlsec.signature.support.Signer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -71,6 +66,9 @@ public class AttributeQueryClient {
             "urn:oasis:names:tc:SAML:2.0:status:UnknownPrincipal";
 
     private static final String SOAP_ACTION = "http://www.oasis-open.org/committees/security";
+
+    private XMLObjectBuilderFactory builderFactory =
+            XMLObjectProviderRegistrySupport.getBuilderFactory();
 
     private SimpleSign simpleSign;
 
@@ -126,7 +124,7 @@ public class AttributeQueryClient {
             simpleSign.signSamlObject(attributeQuery);
 
             // Create soap message for request.
-            soapElement = createSOAPMessage(attributeQuery);
+            soapElement = createSoapMessage(attributeQuery);
 
             // Sign soap message.
             Signer.signObject(attributeQuery.getSignature());
@@ -147,31 +145,13 @@ public class AttributeQueryClient {
      * @param attributeQuery is added to the SOAP message
      * @return soapElement is the Element of the SOAP message
      */
-    private Element createSOAPMessage(AttributeQuery attributeQuery)
+    private Element createSoapMessage(AttributeQuery attributeQuery)
             throws AttributeQueryException {
-        LOGGER.debug("Creating SAML SOAP object of the AttributeQuery.");
+        LOGGER.debug("Creating SOAP message from the SAML AttributeQuery.");
 
-        XMLObjectBuilderFactory builderFactory = Configuration.getBuilderFactory();
-        BodyBuilder soapBodyBuilder =
-                (BodyBuilder) builderFactory.getBuilder(Body.DEFAULT_ELEMENT_NAME);
+        Envelope envelope = SamlProtocol.createSoapMessage(attributeQuery);
 
-        EnvelopeBuilder soapEnvelopeBuilder =
-                (EnvelopeBuilder) builderFactory.getBuilder(Envelope.DEFAULT_ELEMENT_NAME);
-
-        HeaderBuilder soapHeaderBuilder =
-                (HeaderBuilder) builderFactory.getBuilder(Header.DEFAULT_ELEMENT_NAME);
-
-        Body body = soapBodyBuilder.buildObject();
-        body.getUnknownXMLObjects()
-                .add(attributeQuery);
-
-        Envelope envelope = soapEnvelopeBuilder.buildObject();
-        envelope.setBody(body);
-
-        Header header = soapHeaderBuilder.buildObject();
-        envelope.setHeader(header);
-
-        LOGGER.debug("SAML SOAP object of the AttributeQuery created.");
+        LOGGER.debug("SOAP message from the SAML AttributeQuery created.");
 
         try {
             return new EnvelopeMarshaller().marshall(envelope);
@@ -236,7 +216,7 @@ public class AttributeQueryClient {
                     .item(0);
             Element responseElement = (Element) responseNode;
 
-            Unmarshaller unmarshaller = Configuration.getUnmarshallerFactory()
+            Unmarshaller unmarshaller = XMLObjectProviderRegistrySupport.getUnmarshallerFactory()
                     .getUnmarshaller(responseElement);
 
             Response response = (Response) unmarshaller.unmarshall(responseElement);
