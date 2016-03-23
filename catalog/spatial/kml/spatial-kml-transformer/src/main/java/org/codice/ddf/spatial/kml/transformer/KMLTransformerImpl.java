@@ -22,7 +22,6 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -103,14 +102,13 @@ public class KMLTransformerImpl implements KMLTransformer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KMLTransformerImpl.class);
 
-    protected static final MimeType KML_MIMETYPE = new MimeType();
+    protected static MimeType kmlMimetype;
 
     private static List<StyleSelector> defaultStyle = new ArrayList<StyleSelector>();
 
     static {
         try {
-            KML_MIMETYPE.setPrimaryType("application");
-            KML_MIMETYPE.setSubType("vnd.google-earth.kml+xml");
+            kmlMimetype = new MimeType("application/vnd.google-earth.kml+xml");
         } catch (MimeTypeParseException e) {
             LOGGER.warn("Unable to parse KML MimeType.", e);
         }
@@ -398,10 +396,9 @@ public class KMLTransformerImpl implements KMLTransformer {
             String transformedKmlString = marshalKml(kml);
 
             // logger.debug("transformed kml metacard: " + transformedKmlString);
-            InputStream kmlInputStream = new ByteArrayInputStream(transformedKmlString.getBytes(
-                    StandardCharsets.UTF_8));
+            InputStream kmlInputStream = new ByteArrayInputStream(transformedKmlString.getBytes());
 
-            return new BinaryContentImpl(kmlInputStream, KML_MIMETYPE);
+            return new BinaryContentImpl(kmlInputStream, kmlMimetype);
         } catch (Exception e) {
             LOGGER.error("Error transforming metacard ({}) to KML: {}", metacard.getId(),
                     e.getMessage());
@@ -452,9 +449,9 @@ public class KMLTransformerImpl implements KMLTransformer {
 
         // logger.debug("transformed kml: " + transformedKml);
 
-        InputStream kmlInputStream = new ByteArrayInputStream(transformedKml.getBytes(StandardCharsets.UTF_8));
+        InputStream kmlInputStream = new ByteArrayInputStream(transformedKml.getBytes());
         LOGGER.trace("EXITING: ResponseQueue transform");
-        return new BinaryContentImpl(kmlInputStream, KML_MIMETYPE);
+        return new BinaryContentImpl(kmlInputStream, kmlMimetype);
     }
 
     private String marshalKml(Kml kmlResult) {

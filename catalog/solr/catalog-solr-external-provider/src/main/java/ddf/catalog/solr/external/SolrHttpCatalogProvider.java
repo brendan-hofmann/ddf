@@ -1,10 +1,10 @@
 /**
  * Copyright (c) Codice Foundation
- * <p>
+ * <p/>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
@@ -17,10 +17,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.SolrServer;
@@ -69,8 +65,9 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
     private static Properties describableProperties = new Properties();
 
     static {
-        try (InputStream inputStream = SolrHttpCatalogProvider.class.getResourceAsStream(DESCRIBABLE_PROPERTIES_FILE)) {
-            describableProperties.load(inputStream);
+        try (InputStream propertiesStream = SolrHttpCatalogProvider.class
+                .getResourceAsStream(DESCRIBABLE_PROPERTIES_FILE)) {
+            describableProperties.load(propertiesStream);
         } catch (IOException e) {
             LOGGER.info("Did not load properties properly.", e);
         }
@@ -85,11 +82,11 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
 
     private FilterAdapter filterAdapter;
 
+    private boolean firstUse;
+
     private SolrFilterDelegateFactory solrFilterDelegateFactory;
 
     private DynamicSchemaResolver resolver;
-
-    private Future<SolrServer> serverFuture;
 
     /**
      * Simple constructor
@@ -102,9 +99,9 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
 
         this.filterAdapter = filterAdapter;
         this.server = server;
+        this.firstUse = true;
         this.solrFilterDelegateFactory = solrFilterDelegateFactory;
-        this.resolver = (resolver == null) ? new DynamicSchemaResolver() : resolver;
-
+        this.resolver = resolver;
     }
 
     public SolrHttpCatalogProvider(FilterAdapter filterAdapter, SolrServer server,
@@ -115,13 +112,14 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
     public SolrHttpCatalogProvider(FilterAdapter filterAdapter,
             SolrFilterDelegateFactory solrFilterDelegateFactory) {
         this(filterAdapter, null, solrFilterDelegateFactory, null);
-        updateServer();
+        server = SolrServerFactory
+                .getHttpSolrServer(url, SOLR_CATALOG_CORE_NAME, SOLR_CATALOG_CONFIG_FILE);
     }
 
     @Override
     public void maskId(String id) {
         super.maskId(id);
-        if (!(provider instanceof UnconfiguredCatalogProvider)) {
+        if (provider != null && !(provider instanceof UnconfiguredCatalogProvider)) {
             provider.maskId(id);
         }
     }
@@ -134,13 +132,11 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
      * @param forceAutoCommit
      */
     public void setForceAutoCommit(boolean forceAutoCommit) {
-        ConfigurationStore.getInstance()
-                .setForceAutoCommit(forceAutoCommit);
+        ConfigurationStore.getInstance().setForceAutoCommit(forceAutoCommit);
     }
 
     public void setDisableTextPath(boolean disableTextPath) {
-        ConfigurationStore.getInstance()
-                .setDisableTextPath(disableTextPath);
+        ConfigurationStore.getInstance().setDisableTextPath(disableTextPath);
     }
 
     @Override
@@ -207,8 +203,8 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
      */
     public void shutdown() {
         LOGGER.info("Releasing connection to solr server.");
-        if (getServer() != null) {
-            getServer().shutdown();
+        if (server != null) {
+            server.shutdown();
         }
     }
 
@@ -236,46 +232,43 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
         LOGGER.info("New url {}", urlValue);
 
         if (urlValue != null) {
-            if (!StringUtils.equalsIgnoreCase(urlValue.trim(), url) || getServer() == null) {
+            if (!StringUtils.equalsIgnoreCase(urlValue.trim(), url) || server == null) {
                 url = urlValue.trim();
 
-                if (getServer() != null) {
+                if (server != null) {
                     LOGGER.info(
                             "Shutting down the connection manager to the Solr Server and releasing allocated resources.");
-                    getServer().shutdown();
+                    server.shutdown();
                     LOGGER.info("Shutdown complete.");
                 }
 
-                updateServer();
-            }
+                server = SolrServerFactory
+                        .getHttpSolrServer(url, SOLR_CATALOG_CORE_NAME, SOLR_CATALOG_CONFIG_FILE);
 
+                firstUse = true;
+            }
         } else {
             // sets to null
-            url = null;
+            url = urlValue;
         }
-    }
-
-    private void updateServer() {
-        serverFuture = SolrServerFactory.getHttpSolrServer(url,
-                SOLR_CATALOG_CORE_NAME,
-                SOLR_CATALOG_CONFIG_FILE);
-        server = null;
     }
 
     private CatalogProvider getProvider() {
-
-        if (!isServerUp(getServer())) {
+        if (firstUse) {
+            if (isServerUp(this.server)) {
+                if (resolver == null) {
+                    provider = new SolrCatalogProvider(server, filterAdapter,
+                            solrFilterDelegateFactory);
+                } else {
+                    provider = new SolrCatalogProvider(server, filterAdapter,
+                            solrFilterDelegateFactory, resolver);
+                }
+                provider.maskId(getId());
+                this.firstUse = false;
+                return provider;
+            }
             return new UnconfiguredCatalogProvider();
         }
-
-        if (provider instanceof UnconfiguredCatalogProvider) {
-            provider = new SolrCatalogProvider(getServer(),
-                    filterAdapter,
-                    solrFilterDelegateFactory,
-                    resolver);
-        }
-
-        provider.maskId(getId());
         return provider;
 
     }
@@ -287,9 +280,7 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
         }
 
         try {
-            return OK_STATUS.equals(solrServer.ping()
-                    .getResponse()
-                    .get("status"));
+            return OK_STATUS.equals(solrServer.ping().getResponse().get("status"));
         } catch (Exception e) {
             /*
              * if we get any type of exception, whether declared by Solr or not, we do not want to
@@ -298,17 +289,6 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
             LOGGER.warn(PING_ERROR_MESSAGE, e);
         }
         return false;
-    }
-
-    private SolrServer getServer() {
-        if (server == null && serverFuture != null) {
-            try {
-                return serverFuture.get(5, TimeUnit.SECONDS);
-            } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                LOGGER.debug("Failed to get server from future", e);
-            }
-        }
-        return server;
     }
 
     /**
@@ -321,8 +301,7 @@ public class SolrHttpCatalogProvider extends MaskableImpl implements CatalogProv
      */
     private static class UnconfiguredCatalogProvider implements CatalogProvider {
 
-        private static final String SERVER_DISCONNECTED_MESSAGE =
-                "Solr Server is not connected. Please check the Solr Server status or url, and then retry.";
+        private static final String SERVER_DISCONNECTED_MESSAGE = "Solr Server is not connected. Please check the Solr Server status or url, and then retry.";
 
         @Override
         public Set<ContentType> getContentTypes() {

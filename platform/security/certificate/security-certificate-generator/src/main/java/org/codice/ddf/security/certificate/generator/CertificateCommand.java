@@ -34,6 +34,7 @@ public class CertificateCommand {
         }
         String commonname = args[0];
         configureDemoCert(commonname);
+        removeKey("localhost");
     }
 
     /**
@@ -52,15 +53,26 @@ public class CertificateCommand {
         csr.setCommonName(commonName);
         KeyStore.PrivateKeyEntry pkEntry = demoCa.sign(csr);
         KeyStoreFile ksFile = getKeyStoreFile();
-        for (String alias : ksFile.aliases()) {
-            if (ksFile.isKey(alias)) {
-                ksFile.deleteEntry(alias);
-            }
-        }
         ksFile.setEntry(commonName, pkEntry);
         ksFile.save();
-        return ((X509Certificate) pkEntry.getCertificate()).getSubjectDN()
+        String distinguishedName = ((X509Certificate) pkEntry.getCertificate()).getSubjectDN()
                 .getName();
+        return distinguishedName;
+    }
+
+    /**
+     * Remove key from server keystore. The input is the key's alias in the keystore.
+     * The method returns true if the key is no longer in the keystore, or false if the
+     * key is in the keystore.
+     *
+     * @param alias
+     * @return true if the key is not in the keystore, otherwise false
+     */
+    public static Boolean removeKey(String alias) {
+        KeyStoreFile ksFile = getKeyStoreFile();
+        Boolean success = ksFile.deleteEntry(alias);
+        ksFile.save();
+        return success;
     }
 
     protected static KeyStoreFile getKeyStoreFile() {

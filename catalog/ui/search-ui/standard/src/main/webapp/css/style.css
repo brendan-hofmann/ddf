@@ -11,24 +11,25 @@
  **/
 
 .banner-container {
-    text-align: center;
-    color: white;
+    text-align : center;
+    color : white;
 }
 
-.green {
-    background-color: darkgreen;
+.green{
+    background-color : darkgreen;
 }
+
 
 .blue {
-    background-color: blue;
+    background-color : blue;
 }
 
 .red {
-    background-color: darkred;
+    background-color : darkred;
 }
 
 .yellow {
-    background-color: gold;
+    background-color : gold;
 }
 
 .light-green {

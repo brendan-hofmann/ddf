@@ -20,7 +20,6 @@ import static org.mockito.Mockito.mock;
 import static ddf.catalog.metacard.validation.MetacardValidityMarkerPlugin.VALIDATION_ERRORS;
 import static ddf.catalog.metacard.validation.MetacardValidityMarkerPlugin.VALIDATION_WARNINGS;
 
-import java.util.Arrays;
 import java.util.Date;
 
 import org.junit.Before;
@@ -119,21 +118,6 @@ public class MetacardValidityCheckerPluginTest {
 
         assertThat(filterAdapter.adapt(returnQuery.getQuery(), testValidationQueryDelegate),
                 is(true));
-    }
-
-    @Test
-    public void testOrTrueTrue() {
-        assertThat(testValidationQueryDelegate.or(Arrays.asList(true, true)), is(true));
-    }
-
-    @Test
-    public void testOrTrueFalse() {
-        assertThat(testValidationQueryDelegate.or(Arrays.asList(true, false)), is(true));
-    }
-
-    @Test
-    public void testOrFalseFalse() {
-        assertThat(testValidationQueryDelegate.or(Arrays.asList(false, false)), is(false));
     }
 
     @Test
@@ -538,22 +522,10 @@ public class MetacardValidityCheckerPluginTest {
     }
 
     @Test
-    public void testPropertyIsLikeFalse() {
+    public void testPropertyIsLike() {
         assertThat(
                 testValidationQueryDelegate.propertyIsLike(Metacard.ANY_TEXT, "helloworld", true),
                 is(false));
-    }
-
-    @Test
-    public void testPropertyIsLikeTrueErrors() {
-        assertThat(testValidationQueryDelegate
-                .propertyIsLike(VALIDATION_ERRORS, "sample-validator", true), is(true));
-    }
-
-    @Test
-    public void testPropertyIsLikeTrueWarnings() {
-        assertThat(testValidationQueryDelegate
-                .propertyIsLike(VALIDATION_WARNINGS, "sample-validator", true), is(true));
     }
 
     @Test
