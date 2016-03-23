@@ -1,16 +1,16 @@
 /**
  * Copyright (c) Codice Foundation
- * <p>
+ * <p/>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
  * is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
- **/
+ */
 package ddf.test.itests.catalog;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -32,6 +32,7 @@ import static ddf.test.itests.common.CswQueryBuilder.OR;
 import static ddf.test.itests.common.CswQueryBuilder.PROPERTY_IS_EQUAL_TO;
 import static ddf.test.itests.common.CswQueryBuilder.PROPERTY_IS_LIKE;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
@@ -177,6 +178,12 @@ public class TestCatalog extends AbstractIntegrationTest {
                 .body(Library.getCswIngest()).post(CSW_PATH.getUrl());
     }
 
+    private Response ingestXmlViaCsw() {
+        return given().header("Content-Type", MediaType.APPLICATION_XML)
+                .body(Library.getCswInsert("xml", Library.getSimpleXmlNoDec("http://example.com")))
+                .post(CSW_PATH.getUrl());
+    }
+
     private String getMetacardIdFromCswInsertResponse(Response response)
             throws IOException, XPathExpressionException {
         XPath xPath = XPathFactory.newInstance().newXPath();
@@ -209,6 +216,27 @@ public class TestCatalog extends AbstractIntegrationTest {
         } catch (IOException | XPathExpressionException e) {
             fail("Could not retrieve the ingested record's ID from the response.");
         }
+    }
+
+    @Test
+    public void testCswXmlIngest() {
+        Response response = ingestXmlViaCsw();
+        ValidatableResponse validatableResponse = response.then();
+
+        validatableResponse
+                .body(hasXPath("//TransactionResponse/TransactionSummary/totalInserted", is("1")),
+                        hasXPath("//TransactionResponse/TransactionSummary/totalUpdated", is("0")),
+                        hasXPath("//TransactionResponse/TransactionSummary/totalDeleted", is("0")),
+                        hasXPath("//TransactionResponse/InsertResult/BriefRecord/title",
+                                is("myXmlTitle")),
+                        hasXPath("//TransactionResponse/InsertResult/BriefRecord/BoundingBox"));
+
+        try {
+            deleteMetacard(response);
+        } catch (IOException | XPathExpressionException e) {
+            fail("Could not retrieve the ingested record's ID from the response.");
+        }
+
     }
 
     @Test
@@ -874,6 +902,207 @@ public class TestCatalog extends AbstractIntegrationTest {
         deleteMetacard(id2);
         getServiceManager().stopFeature(true, "catalog-plugin-metacard-validation");
 
+    }
+
+    @Test
+    public void testValidationFiltering() throws Exception {
+        getServiceManager()
+                .startFeature(true, "catalog-plugin-metacard-validation", "filter-plugin");
+        FileWriter fileWriter = new FileWriter("etc/users.properties", true);
+        fileWriter.write("\nguest=guest,viewer");
+        fileWriter.flush();
+        fileWriter.close();
+
+        // Configure the PDP
+        PdpProperties pdpProperties = new PdpProperties();
+        pdpProperties.put("matchOneMappings",
+                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role=invalid-state");
+        Configuration config = configAdmin
+                .getConfiguration("ddf.security.pdp.realm.SimpleAuthzRealm", null);
+        Dictionary<String, ?> configProps = new Hashtable<>(pdpProperties);
+        config.update(configProps);
+
+        // Update metacardMarkerPlugin config with no enforcedMetacardValidators
+        config = configAdmin
+                .getConfiguration("ddf.catalog.metacard.validation.MetacardValidityMarkerPlugin",
+                        null);
+        Dictionary<String, Object> properties = new Hashtable<>();
+        List<String> property = new ArrayList<>();
+        property.add("");
+        properties.put("enforcedMetacardValidators", property);
+        config.update(properties);
+
+        // Configure invalid filtering
+        config = configAdmin
+                .getConfiguration("ddf.catalog.metacard.validation.MetacardValidityFilterPlugin",
+                        null);
+        properties = new Hashtable<>();
+        property = new ArrayList<>();
+        property.add("invalid-state=system-admin");
+        properties.put("attributeMap", property);
+        config.update(properties);
+
+        String id1 = ingestXmlFromResource("/metacard1.xml");
+        String id2 = ingestXmlFromResource("/metacard2.xml");
+
+        getSecurityPolicy().configureRestForBasic();
+
+        String query = new CswQueryBuilder()
+                .addAttributeFilter(PROPERTY_IS_LIKE, VALIDATION_WARNINGS, "*")
+                .addPropertyIsNullAttributeFilter(VALIDATION_WARNINGS).addLogicalOperator(OR)
+                .getQuery();
+
+        ValidatableResponse response = given().auth().basic("admin", "admin")
+                .header("Content-Type", MediaType.APPLICATION_XML).body(query)
+                .post(CSW_PATH.getUrl()).then();
+        // Assert Metacard2 is in results AND Metacard1
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id1)));
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id2)));
+
+        response = given().auth().basic("guest", "guest")
+                .header("Content-Type", MediaType.APPLICATION_XML).body(query)
+                .post(CSW_PATH.getUrl()).then();
+        // Assert Metacard2 is in results Metacard1
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id1)));
+        response.body(not(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]",
+                        id2))));
+
+        // Configure invalid filtering
+        config = configAdmin
+                .getConfiguration("ddf.catalog.metacard.validation.MetacardValidityFilterPlugin",
+                        null);
+        properties = new Hashtable<>();
+        property = new ArrayList<>();
+        property.add("invalid-state=system-admin,guest");
+        properties.put("attributeMap", property);
+        config.update(properties);
+
+        response = given().auth().basic("admin", "admin")
+                .header("Content-Type", MediaType.APPLICATION_XML).body(query)
+                .post(CSW_PATH.getUrl()).then();
+        // Assert Metacard2 is in results AND Metacard1
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id1)));
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id2)));
+
+        response = given().auth().basic("guest", "guest")
+                .header("Content-Type", MediaType.APPLICATION_XML).body(query)
+                .post(CSW_PATH.getUrl()).then();
+        // Assert Metacard2 is in results Metacard1
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id1)));
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id2)));
+
+        getSecurityPolicy().configureRestForGuest();
+
+        deleteMetacard(id1);
+        deleteMetacard(id2);
+        getServiceManager()
+                .stopFeature(true, "catalog-plugin-metacard-validation", "filter-plugin");
+    }
+
+    @Test
+    public void testValidationFilteringXACML() throws Exception {
+        getServiceManager().stopFeature(true, "security-pdp-java");
+        getServiceManager().startFeature(true, "security-pdp-xacml");
+        getServiceManager()
+                .startFeature(true, "catalog-plugin-metacard-validation", "filter-plugin");
+        FileWriter fileWriter = new FileWriter("etc/users.properties", true);
+        fileWriter.write("\nguest=guest,viewer");
+        fileWriter.flush();
+        fileWriter.close();
+
+        // Update metacardMarkerPlugin config with no enforcedMetacardValidators
+        Configuration config = configAdmin
+                .getConfiguration("ddf.catalog.metacard.validation.MetacardValidityMarkerPlugin",
+                        null);
+        Dictionary<String, Object> properties = new Hashtable<>();
+        List<String> property = new ArrayList<>();
+        property.add("");
+        properties.put("enforcedMetacardValidators", property);
+        config.update(properties);
+
+        // Configure invalid filtering
+        config = configAdmin
+                .getConfiguration("ddf.catalog.metacard.validation.MetacardValidityFilterPlugin",
+                        null);
+        properties = new Hashtable<>();
+        property = new ArrayList<>();
+        property.add("invalid-state=system-admin");
+        properties.put("attributeMap", property);
+        config.update(properties);
+
+        String id1 = ingestXmlFromResource("/metacard1.xml");
+        String id2 = ingestXmlFromResource("/metacard2.xml");
+
+        getSecurityPolicy().configureRestForBasic();
+
+        String query = new CswQueryBuilder()
+                .addAttributeFilter(PROPERTY_IS_LIKE, VALIDATION_WARNINGS, "*")
+                .addPropertyIsNullAttributeFilter(VALIDATION_WARNINGS).addLogicalOperator(OR)
+                .getQuery();
+
+        ValidatableResponse response = given().auth().basic("admin", "admin")
+                .header("Content-Type", MediaType.APPLICATION_XML).body(query)
+                .post(CSW_PATH.getUrl()).then();
+        // Assert Metacard2 is in results AND Metacard1
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id1)));
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id2)));
+
+        response = given().auth().basic("guest", "guest")
+                .header("Content-Type", MediaType.APPLICATION_XML).body(query)
+                .post(CSW_PATH.getUrl()).then();
+        // Assert Metacard2 is in results Metacard1
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id1)));
+        response.body(not(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]",
+                        id2))));
+
+        // Configure invalid filtering
+        config = configAdmin
+                .getConfiguration("ddf.catalog.metacard.validation.MetacardValidityFilterPlugin",
+                        null);
+        properties = new Hashtable<>();
+        property = new ArrayList<>();
+        property.add("invalid-state=guest");
+        properties.put("attributeMap", property);
+        config.update(properties);
+
+        response = given().auth().basic("admin", "admin")
+                .header("Content-Type", MediaType.APPLICATION_XML).body(query)
+                .post(CSW_PATH.getUrl()).then();
+        // Assert Metacard2 is in results AND Metacard1
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id1)));
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id2)));
+
+        response = given().auth().basic("guest", "guest")
+                .header("Content-Type", MediaType.APPLICATION_XML).body(query)
+                .post(CSW_PATH.getUrl()).then();
+        // Assert Metacard2 is in results Metacard1
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id1)));
+        response.body(hasXPath(
+                String.format("/GetRecordsResponse/SearchResults/Record[identifier=\"%s\"]", id2)));
+
+        getSecurityPolicy().configureRestForGuest();
+
+        deleteMetacard(id1);
+        deleteMetacard(id2);
+        getServiceManager()
+                .stopFeature(true, "catalog-plugin-metacard-validation", "filter-plugin");
+        getServiceManager().startFeature(true, "security-pdp-java");
+        getServiceManager().stopFeature(true, "security-pdp-xacml");
     }
 
     @Test
