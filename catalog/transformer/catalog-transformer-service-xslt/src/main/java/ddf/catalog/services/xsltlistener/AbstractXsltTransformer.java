@@ -105,7 +105,6 @@ public abstract class AbstractXsltTransformer {
         }
         if (mimeString == null) {
             this.mimeType = DEFAULT_MIME_TYPE;
-            mimeString = "";
         }
         try {
             this.mimeType = new MimeType(mimeString);

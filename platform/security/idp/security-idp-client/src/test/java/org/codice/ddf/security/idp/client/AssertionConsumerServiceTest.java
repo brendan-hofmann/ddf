@@ -42,7 +42,7 @@ import org.codice.ddf.configuration.SystemBaseUrl;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.opensaml.saml.saml2.core.StatusCode;
+import org.opensaml.saml2.core.StatusCode;
 import org.w3c.dom.Document;
 
 import com.google.common.base.Charsets;
@@ -105,7 +105,6 @@ public class AssertionConsumerServiceTest {
         sessionFactory = mock(SessionFactory.class);
         httpRequest = mock(HttpServletRequest.class);
         when(httpRequest.getRequestURL()).thenReturn(new StringBuffer("fubar"));
-        when(httpRequest.isSecure()).thenReturn(true);
         idpMetadata = new IdpMetadata();
 
         assertionConsumerService = new AssertionConsumerService(simpleSign,
@@ -140,17 +139,6 @@ public class AssertionConsumerServiceTest {
                 response.getLocation()
                         .toString(),
                 equalTo(LOCATION));
-    }
-
-    @Test
-    public void testPostSamlResponseNotSecure() throws Exception {
-        when(httpRequest.isSecure()).thenReturn(false);
-        Response response =
-                assertionConsumerService.postSamlResponse(new String(Base64.encodeBase64(this.cannedResponse.getBytes())),
-                        RELAY_STATE_VAL);
-        assertThat("The http response was not 500 ERROR",
-                response.getStatus(),
-                is(HttpStatus.SC_INTERNAL_SERVER_ERROR));
     }
 
     @Ignore
@@ -242,7 +230,8 @@ public class AssertionConsumerServiceTest {
 
     @Test
     public void testProcessSamlResponseAuthnFailure() throws Exception {
-        String failureRequest = cannedResponse.replace(StatusCode.SUCCESS, StatusCode.AUTHN_FAILED);
+        String failureRequest = cannedResponse.replace(StatusCode.SUCCESS_URI,
+                StatusCode.AUTHN_FAILED_URI);
         Response response = assertionConsumerService.processSamlResponse(failureRequest,
                 RELAY_STATE_VAL);
         assertThat("The http response was not 500 SEVER ERROR",
@@ -252,8 +241,8 @@ public class AssertionConsumerServiceTest {
 
     @Test
     public void testProcessSamlResponseRequestDenied() throws Exception {
-        String failureRequest = cannedResponse.replace(StatusCode.SUCCESS,
-                StatusCode.REQUEST_DENIED);
+        String failureRequest = cannedResponse.replace(StatusCode.SUCCESS_URI,
+                StatusCode.REQUEST_DENIED_URI);
         Response response = assertionConsumerService.processSamlResponse(failureRequest,
                 RELAY_STATE_VAL);
         assertThat("The http response was not 500 SEVER ERROR",
@@ -263,8 +252,8 @@ public class AssertionConsumerServiceTest {
 
     @Test
     public void testProcessSamlResponseRequestUnsupported() throws Exception {
-        String failureRequest = cannedResponse.replace(StatusCode.SUCCESS,
-                StatusCode.REQUEST_UNSUPPORTED);
+        String failureRequest = cannedResponse.replace(StatusCode.SUCCESS_URI,
+                StatusCode.REQUEST_UNSUPPORTED_URI);
         Response response = assertionConsumerService.processSamlResponse(failureRequest,
                 RELAY_STATE_VAL);
         assertThat("The http response was not 500 SEVER ERROR",
@@ -274,8 +263,8 @@ public class AssertionConsumerServiceTest {
 
     @Test
     public void testProcessSamlResponseUnsupportedBinding() throws Exception {
-        String failureRequest = cannedResponse.replace(StatusCode.SUCCESS,
-                StatusCode.UNSUPPORTED_BINDING);
+        String failureRequest = cannedResponse.replace(StatusCode.SUCCESS_URI,
+                StatusCode.UNSUPPORTED_BINDING_URI);
         Response response = assertionConsumerService.processSamlResponse(failureRequest,
                 RELAY_STATE_VAL);
         assertThat("The http response was not 500 SEVER ERROR",
@@ -381,12 +370,12 @@ public class AssertionConsumerServiceTest {
                 .toString());
         assertThat("SingleLogoutService Binding attribute was not the expected HTTP-Redirect",
                 document,
-                hasXPath("//urn:oasis:names:tc:SAML:2.0:metadata:SingleLogoutService/@Binding", is(
-                        equalTo("urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"))));
+                hasXPath("//urn:oasis:names:tc:SAML:2.0:metadata:SingleLogoutService/@Binding",
+                        is(equalTo("urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"))));
         assertThat("SingleLogoutService Binding attribute was not the expected HTTP-Redirect",
                 document,
-                hasXPath("//urn:oasis:names:tc:SAML:2.0:metadata:SingleLogoutService/@Location", is(
-                        equalTo("https://localhost:8993/logout"))));
+                hasXPath("//urn:oasis:names:tc:SAML:2.0:metadata:SingleLogoutService/@Location",
+                        is(equalTo("https://localhost:8993/logout"))));
         assertThat("The http response was not 200 OK", response.getStatus(), is(HttpStatus.SC_OK));
         assertThat("Response entity was null", response.getEntity(), notNullValue());
 
@@ -406,8 +395,9 @@ public class AssertionConsumerServiceTest {
     @Test
     public void testGetLoginFilter() throws Exception {
         Filter filter = assertionConsumerService.getLoginFilter();
-        assertThat("Returned login filter was not the same as the one set", filter, equalTo(
-                loginFilter));
+        assertThat("Returned login filter was not the same as the one set",
+                filter,
+                equalTo(loginFilter));
     }
 
 }

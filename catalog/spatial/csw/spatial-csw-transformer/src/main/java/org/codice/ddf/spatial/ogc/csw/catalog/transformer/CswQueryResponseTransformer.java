@@ -18,7 +18,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.List;
@@ -150,7 +149,7 @@ public class CswQueryResponseTransformer implements QueryResponseTransformer {
             // "catches" recordCollection.getResultType() == null
             List<Result> results = sourceResponse.getResults();
             String xmlString = convert(recordCollection, results, arguments);
-            bais = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+            bais = new ByteArrayInputStream(xmlString.getBytes());
         }
 
         BinaryContent transformedContent = new BinaryContentImpl(bais, new MimeType());

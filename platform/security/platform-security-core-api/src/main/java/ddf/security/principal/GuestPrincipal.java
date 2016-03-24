@@ -13,7 +13,6 @@
  */
 package ddf.security.principal;
 
-import java.io.Serializable;
 import java.security.Principal;
 
 import org.apache.commons.lang.StringUtils;
@@ -21,13 +20,11 @@ import org.apache.commons.lang.StringUtils;
 /**
  * Principal that designates a {@link ddf.security.Subject} as guest
  */
-public class GuestPrincipal implements Principal, Serializable {
+public class GuestPrincipal implements Principal {
 
     public static final String GUEST_NAME_PREFIX = "Guest";
 
     public static final String NAME_DELIMITER = "@";
-
-    private static final long serialVersionUID = -4630425142287155229L;
 
     private String name;
 

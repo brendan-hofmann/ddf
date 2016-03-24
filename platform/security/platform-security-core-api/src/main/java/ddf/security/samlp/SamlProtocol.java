@@ -23,42 +23,36 @@ import org.apache.wss4j.common.ext.WSSecurityException;
 import org.apache.wss4j.common.saml.OpenSAMLUtil;
 import org.apache.wss4j.common.saml.SamlAssertionWrapper;
 import org.joda.time.DateTime;
-import org.opensaml.core.config.InitializationException;
-import org.opensaml.core.config.InitializationService;
-import org.opensaml.core.xml.XMLObjectBuilder;
-import org.opensaml.core.xml.XMLObjectBuilderFactory;
-import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
-import org.opensaml.saml.common.SAMLObjectBuilder;
-import org.opensaml.saml.common.SAMLRuntimeException;
-import org.opensaml.saml.common.SAMLVersion;
-import org.opensaml.saml.common.SignableSAMLObject;
-import org.opensaml.saml.saml2.core.AttributeQuery;
-import org.opensaml.saml.saml2.core.Issuer;
-import org.opensaml.saml.saml2.core.LogoutRequest;
-import org.opensaml.saml.saml2.core.LogoutResponse;
-import org.opensaml.saml.saml2.core.NameID;
-import org.opensaml.saml.saml2.core.Response;
-import org.opensaml.saml.saml2.core.Status;
-import org.opensaml.saml.saml2.core.StatusCode;
-import org.opensaml.saml.saml2.core.Subject;
-import org.opensaml.saml.saml2.metadata.AssertionConsumerService;
-import org.opensaml.saml.saml2.metadata.EntityDescriptor;
-import org.opensaml.saml.saml2.metadata.IDPSSODescriptor;
-import org.opensaml.saml.saml2.metadata.KeyDescriptor;
-import org.opensaml.saml.saml2.metadata.NameIDFormat;
-import org.opensaml.saml.saml2.metadata.SPSSODescriptor;
-import org.opensaml.saml.saml2.metadata.SingleLogoutService;
-import org.opensaml.saml.saml2.metadata.SingleSignOnService;
-import org.opensaml.security.credential.UsageType;
-import org.opensaml.soap.soap11.Body;
-import org.opensaml.soap.soap11.Envelope;
-import org.opensaml.soap.soap11.Header;
-import org.opensaml.soap.soap11.impl.BodyBuilder;
-import org.opensaml.soap.soap11.impl.EnvelopeBuilder;
-import org.opensaml.soap.soap11.impl.HeaderBuilder;
-import org.opensaml.xmlsec.signature.KeyInfo;
-import org.opensaml.xmlsec.signature.X509Certificate;
-import org.opensaml.xmlsec.signature.X509Data;
+import org.opensaml.Configuration;
+import org.opensaml.common.SAMLObjectBuilder;
+import org.opensaml.common.SAMLVersion;
+import org.opensaml.saml2.core.AttributeQuery;
+import org.opensaml.saml2.core.Issuer;
+import org.opensaml.saml2.core.NameID;
+import org.opensaml.saml2.core.Response;
+import org.opensaml.saml2.core.Status;
+import org.opensaml.saml2.core.StatusCode;
+import org.opensaml.saml2.core.Subject;
+import org.opensaml.saml2.metadata.AssertionConsumerService;
+import org.opensaml.saml2.metadata.EntityDescriptor;
+import org.opensaml.saml2.metadata.IDPSSODescriptor;
+import org.opensaml.saml2.metadata.KeyDescriptor;
+import org.opensaml.saml2.metadata.NameIDFormat;
+import org.opensaml.saml2.metadata.SPSSODescriptor;
+import org.opensaml.saml2.metadata.SingleLogoutService;
+import org.opensaml.saml2.metadata.SingleSignOnService;
+import org.opensaml.ws.soap.soap11.Body;
+import org.opensaml.ws.soap.soap11.Envelope;
+import org.opensaml.ws.soap.soap11.Header;
+import org.opensaml.ws.soap.soap11.impl.BodyBuilder;
+import org.opensaml.ws.soap.soap11.impl.EnvelopeBuilder;
+import org.opensaml.ws.soap.soap11.impl.HeaderBuilder;
+import org.opensaml.xml.XMLObjectBuilder;
+import org.opensaml.xml.XMLObjectBuilderFactory;
+import org.opensaml.xml.security.credential.UsageType;
+import org.opensaml.xml.signature.KeyInfo;
+import org.opensaml.xml.signature.X509Certificate;
+import org.opensaml.xml.signature.X509Data;
 import org.w3c.dom.Element;
 
 public class SamlProtocol {
@@ -75,27 +69,12 @@ public class SamlProtocol {
      */
     static {
         OpenSAMLUtil.initSamlEngine();
-
-        ClassLoader tccl = Thread.currentThread()
-                .getContextClassLoader();
-        Thread.currentThread()
-                .setContextClassLoader(SamlProtocol.class.getClassLoader());
-        try {
-            InitializationService.initialize();
-        } catch (InitializationException e) {
-            throw new SAMLRuntimeException("Unable to Initialize SAML SOAP builders.");
-        } finally {
-            Thread.currentThread()
-                    .setContextClassLoader(tccl);
-        }
     }
-
-    private static XMLObjectBuilderFactory builderFactory =
-            XMLObjectProviderRegistrySupport.getBuilderFactory();
+    private static XMLObjectBuilderFactory builderFactory = Configuration.getBuilderFactory();
 
     @SuppressWarnings("unchecked")
     private static SAMLObjectBuilder<Response> responseSAMLObjectBuilder =
-            (SAMLObjectBuilder<org.opensaml.saml.saml2.core.Response>) builderFactory.getBuilder(org.opensaml.saml.saml2.core.Response.DEFAULT_ELEMENT_NAME);
+            (SAMLObjectBuilder<org.opensaml.saml2.core.Response>) builderFactory.getBuilder(org.opensaml.saml2.core.Response.DEFAULT_ELEMENT_NAME);
 
     @SuppressWarnings("unchecked")
     private static SAMLObjectBuilder<Issuer> issuerBuilder =
@@ -167,12 +146,8 @@ public class SamlProtocol {
             (SAMLObjectBuilder<AttributeQuery>) builderFactory.getBuilder(AttributeQuery.DEFAULT_ELEMENT_NAME);
 
     @SuppressWarnings("unchecked")
-    private static SAMLObjectBuilder<LogoutRequest> logoutRequestBuilder =
-            (SAMLObjectBuilder<LogoutRequest>) builderFactory.getBuilder(LogoutRequest.DEFAULT_ELEMENT_NAME);
-
-    @SuppressWarnings("unchecked")
-    private static SAMLObjectBuilder<LogoutResponse> logoutResponseBuilder =
-            (SAMLObjectBuilder<LogoutResponse>) builderFactory.getBuilder(LogoutResponse.DEFAULT_ELEMENT_NAME);
+    private static HeaderBuilder soapHeaderBuilder = (HeaderBuilder) builderFactory.getBuilder(
+            Header.DEFAULT_ELEMENT_NAME);
 
     @SuppressWarnings("unchecked")
     private static BodyBuilder soapBodyBuilder =
@@ -181,10 +156,6 @@ public class SamlProtocol {
     @SuppressWarnings("unchecked")
     private static EnvelopeBuilder soapEnvelopeBuilder =
             (EnvelopeBuilder) builderFactory.getBuilder(Envelope.DEFAULT_ELEMENT_NAME);
-
-    @SuppressWarnings("unchecked")
-    private static HeaderBuilder soapHeaderBuilder = (HeaderBuilder) builderFactory.getBuilder(
-            Header.DEFAULT_ELEMENT_NAME);
 
     public enum Binding {
         HTTP_POST("urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"),
@@ -220,24 +191,7 @@ public class SamlProtocol {
         }
     }
 
-    public enum Type {
-        REQUEST("SAMLRequest"),
-        RESPONSE("SAMLResponse"),
-        NULL("");
-
-        private final String key;
-
-        Type(String key) {
-            this.key = key;
-        }
-
-        public String getKey() {
-            return key;
-        }
-    }
-
     private SamlProtocol() {
-
     }
 
     public static Response createResponse(Issuer issuer, Status status, String requestId,
@@ -473,45 +427,5 @@ public class SamlProtocol {
 
     public static AttributeQuery createAttributeQuery(Issuer issuer, Subject subject) {
         return createAttributeQuery(issuer, subject, null);
-    }
-
-    public static LogoutRequest createLogoutRequest(Issuer issuer, NameID nameId, String id) {
-        LogoutRequest logoutRequest = logoutRequestBuilder.buildObject();
-        logoutRequest.setID(id);
-        logoutRequest.setIssuer(issuer);
-        logoutRequest.setNameID(nameId);
-        logoutRequest.setIssueInstant(DateTime.now());
-        logoutRequest.setVersion(SAMLVersion.VERSION_20);
-        return logoutRequest;
-    }
-
-    public static LogoutResponse createLogoutResponse(Issuer issuer, Status status,
-            String inResponseTo, String id) {
-        LogoutResponse logoutResponse = logoutResponseBuilder.buildObject();
-        logoutResponse.setID(id);
-        logoutResponse.setIssuer(issuer);
-        logoutResponse.setStatus(status);
-        if (StringUtils.isNotBlank(inResponseTo)) {
-            logoutResponse.setInResponseTo(inResponseTo);
-        }
-        logoutResponse.setIssueInstant(DateTime.now());
-        logoutResponse.setVersion(SAMLVersion.VERSION_20);
-        return logoutResponse;
-    }
-
-    public static LogoutResponse createLogoutResponse(Issuer issuer, Status status, String id) {
-        return createLogoutResponse(issuer, status, null, id);
-    }
-
-    public static Envelope createSoapMessage(SignableSAMLObject signableSAMLObject) {
-        Body body = soapBodyBuilder.buildObject();
-        body.getUnknownXMLObjects()
-                .add(signableSAMLObject);
-        Envelope envelope = soapEnvelopeBuilder.buildObject();
-        envelope.setBody(body);
-        Header header = soapHeaderBuilder.buildObject();
-        envelope.setHeader(header);
-
-        return envelope;
     }
 }
