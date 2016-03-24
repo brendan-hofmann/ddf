@@ -47,7 +47,6 @@ require.config({
         maptype : 'js/maptype',
         spinnerConfig : 'js/spinnerConfig',
         wreqr: 'js/wreqr',
-        user: 'js/user',
         properties: 'properties',
 
         // jquery
@@ -65,6 +64,7 @@ require.config({
         multiselectfilter: 'lib/multiselect/src/jquery.multiselect.filter',
         "jquery.ui.widget": 'lib/jquery-ui/ui/minified/jquery.ui.widget.min',
         fileupload: 'lib/jquery-file-upload/js/jquery.fileupload',
+        jquerySortable: 'lib/jquery-ui/ui/minified/jquery.ui.sortable.min',
 
         // handlebars
         handlebars: 'lib/handlebars/handlebars.min',
@@ -81,7 +81,9 @@ require.config({
         cesium: 'lib/cesiumjs/Cesium/Cesium',
         drawHelper: 'lib/cesium-drawhelper/DrawHelper',
         openlayers: 'lib/openlayers3/build/ol',
-        usngs: 'lib/usng.js/usng'
+        usngs: 'lib/usng.js/usng',
+
+        wellknown: 'lib/wellknown/wellknown'
     },
 
     shim: {
@@ -136,6 +138,7 @@ require.config({
         multiselect: ['jquery', 'jquery.ui.widget'],
         multiselectfilter: ['jquery', 'multiselect'],
         fileupload: ['jquery', 'jquery.ui.widget'],
+        jquerySortable: ['jquery', 'jqueryuiCore', 'jquery.ui.widget', 'mouse'],
 
         perfectscrollbar: ['jquery'],
 
@@ -157,6 +160,7 @@ require.config({
         },
 
         bootstrapselect: ['bootstrap']
+
     },
 
     waitSeconds: 0
