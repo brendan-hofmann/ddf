@@ -81,6 +81,5 @@
         <module>solr-query</module>
         <module>solr-xpath</module>
         <module>platform-solr-server-standalone</module>
-        <module>solr-banana</module>
     </modules>
 </project>

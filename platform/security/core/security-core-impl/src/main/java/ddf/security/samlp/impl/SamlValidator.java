@@ -1,10 +1,10 @@
 /**
  * Copyright (c) Codice Foundation
- * <p/>
+ * <p>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
@@ -26,20 +26,21 @@ import javax.validation.constraints.NotNull;
 
 import org.codice.ddf.security.common.HttpUtils;
 import org.joda.time.DateTime;
-import org.opensaml.core.xml.XMLObject;
-import org.opensaml.saml.common.SAMLVersion;
-import org.opensaml.saml.common.SignableSAMLObject;
-import org.opensaml.saml.saml2.core.LogoutRequest;
-import org.opensaml.saml.saml2.core.LogoutResponse;
-import org.opensaml.xmlsec.signature.SignableXMLObject;
+import org.opensaml.common.SAMLVersion;
+import org.opensaml.common.SignableSAMLObject;
+import org.opensaml.saml2.core.LogoutRequest;
+import org.opensaml.saml2.core.LogoutResponse;
+import org.opensaml.xml.XMLObject;
+import org.opensaml.xml.validation.ValidatingXMLObject;
+import org.opensaml.xml.validation.ValidationException;
+import org.opensaml.xml.validation.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ddf.security.samlp.SamlProtocol;
 import ddf.security.samlp.SimpleSign;
-import ddf.security.samlp.ValidationException;
 
-public abstract class SamlValidator {
+public abstract class SamlValidator implements Validator<ValidatingXMLObject> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SamlValidator.class);
 
     protected final Builder builder;
@@ -48,7 +49,13 @@ public abstract class SamlValidator {
         this.builder = builder;
     }
 
-    public final void validate() throws ValidationException {
+    @Override
+    public final void validate(ValidatingXMLObject xmlObject) throws ValidationException {
+        // This is intentionally an instance equality check
+        if (xmlObject != builder.xmlObject) {
+            throw new ValidationException("Cannot validate a different target.");
+        }
+
         checkTimestamp();
         checkSamlVersion();
         checkId();
@@ -71,7 +78,7 @@ public abstract class SamlValidator {
         }
 
         if (instant.plus(builder.clockSkew)
-                .isBefore(now.minus(builder.timeout))) {
+                .isBefore(now.minus(builder.issueTimeout))) {
             throw new ValidationException("Issue Instant was outside valid time range");
         }
 
@@ -131,15 +138,6 @@ public abstract class SamlValidator {
         }
     }
 
-    /**
-     * Builder class for SamlValidator.
-     * <br/>
-     * Default <code>Timeout</code> of 10 minutes and <code>clockSkew</code> of 30 seconds.
-     * <br/>
-     * If validating a redirect saml type, the Signature, Signature Algorithm,
-     * Relay State, <b>original</b> Saml string, and signing certificate are
-     * required. For Post binding type, only the object is required.
-     */
     public static class Builder {
         protected SimpleSign simpleSign;
 
@@ -149,13 +147,13 @@ public abstract class SamlValidator {
 
         protected XMLObject xmlObject;
 
-        protected Duration timeout = Duration.ofMinutes(10);
+        protected Duration issueTimeout = Duration.ofMinutes(10);
 
         protected Duration clockSkew = Duration.ofSeconds(30);
 
-        protected String requestId;
+        protected String inResponse;
 
-        protected String destination;
+        protected String endpoint;
 
         protected String relayState;
 
@@ -167,57 +165,37 @@ public abstract class SamlValidator {
 
         protected String signingCertificate;
 
-        /**
-         * Creates a new <code>SamlValidator.Builder</code> with the given SimpleSign.
-         * <br/>
-         * Create a new instance, set any optional arguments, and then finish
-         * by calling either <code>build()</code> or <code>buildAndValidate</code>.
-         *
-         * @param simpleSign an instance of {@link SimpleSign}
-         */
         public Builder(SimpleSign simpleSign) {
             this.simpleSign = simpleSign;
         }
 
-        /**
-         * Utility method that calls the
-         * {@link #build(String, SamlProtocol.Binding, SignableXMLObject)} method
-         * and then validates the object.
-         *
-         * @param destination The actual endpoint that the saml object was sent to,
-         *                    not the destination field on the object
-         * @param binding     The binding of the object (POST or REDIRECT)
-         * @param xmlObject   target object to validate
-         * @throws IllegalStateException
-         * @throws ValidationException
-         */
         public void buildAndValidate(@NotNull String destination,
-                @NotNull SamlProtocol.Binding binding, @NotNull SignableXMLObject xmlObject)
+                @NotNull SamlProtocol.Binding binding, @NotNull ValidatingXMLObject xmlObject)
                 throws IllegalStateException, ValidationException {
-            SamlValidator validator = build(destination, binding, xmlObject);
-            validator.validate();
+            Validator<ValidatingXMLObject> validator = build(destination, binding, xmlObject);
+            xmlObject.registerValidator(validator);
+            xmlObject.validate(false);
         }
 
         /**
-         * @param destination The actual endpoint that the saml object was sent to,
-         *                    not the destination field on the object
-         * @param binding     The binding of the object (POST or REDIRECT)
-         * @param xmlObject   target object to validate
-         * @return A {@link SamlValidator} object
+         * @param endpoint
+         * @param binding
+         * @param xmlObject target object to validate
+         * @return
          * @throws IllegalStateException
          */
-        public SamlValidator build(@NotNull String destination,
-                @NotNull SamlProtocol.Binding binding, @NotNull SignableXMLObject xmlObject)
+        public SamlValidator build(@NotNull String endpoint, @NotNull SamlProtocol.Binding binding,
+                @NotNull ValidatingXMLObject xmlObject)
                 throws IllegalStateException, ValidationException {
             if (binding == null) {
                 throw new IllegalArgumentException("Binding cannot be null!");
             }
             this.binding = binding;
 
-            if (isBlank(destination)) {
-                throw new IllegalArgumentException("The service destination cannot be null");
+            if (isBlank(endpoint)) {
+                throw new IllegalArgumentException("The service endpoint destination cannot be null");
             }
-            this.destination = destination;
+            this.endpoint = endpoint;
 
             if (xmlObject instanceof LogoutRequest) {
                 isRequest = true;
@@ -254,19 +232,19 @@ public abstract class SamlValidator {
             return this;
         }
 
-        public Builder setRequestId(@NotNull String requestId) {
-            if (isBlank(requestId)) {
-                throw new IllegalArgumentException("Logout Request Id cannot be blank!");
+        public Builder setInResponse(@NotNull String inResponse) {
+            if (isBlank(inResponse)) {
+                throw new IllegalArgumentException("InResponseTo Id cannot be blank!");
             }
-            this.requestId = requestId;
+            this.inResponse = inResponse;
             return this;
         }
 
-        public Builder setTimeout(@NotNull Duration timeout) {
-            if (timeout == null) {
-                throw new IllegalArgumentException("Timeout cannot be null!");
+        public Builder setIssueTimeout(@NotNull Duration issueTimeout) {
+            if (issueTimeout == null) {
+                throw new IllegalArgumentException("Issue Timeout cannot be null!");
             }
-            this.timeout = timeout;
+            this.issueTimeout = issueTimeout;
             return this;
         }
 
@@ -311,7 +289,7 @@ public abstract class SamlValidator {
             if (isNotBlank(logoutRequest.getDestination())) {
                 try {
                     if (!HttpUtils.validateAndStripQueryString(logoutRequest.getDestination())
-                            .equals(builder.destination)) {
+                            .equals(builder.endpoint)) {
                         throw new ValidationException("Destination validation failed");
                     }
                 } catch (MalformedURLException e) {
@@ -354,7 +332,7 @@ public abstract class SamlValidator {
         protected void checkDestination() throws ValidationException {
             if (isNotBlank(logoutResponse.getDestination())) {
                 try {
-                    if (!builder.destination.equals(HttpUtils.validateAndStripQueryString(
+                    if (!builder.endpoint.equals(HttpUtils.validateAndStripQueryString(
                             logoutResponse.getDestination()))) {
                         throw new ValidationException("Destination validation failed");
                     }
@@ -366,10 +344,9 @@ public abstract class SamlValidator {
 
         @Override
         protected void checkId() throws ValidationException {
-            if (isNotBlank(builder.requestId)) {
-                if (!builder.requestId.equals(logoutResponse.getInResponseTo())) {
-                    throw new ValidationException(
-                            "The InResponseTo value did not match the Logout Request Id");
+            if (isNotBlank(builder.inResponse)) {
+                if (!builder.inResponse.equals(logoutResponse.getInResponseTo())) {
+                    throw new ValidationException("The InResponseTo value was incorrect");
                 }
             }
         }

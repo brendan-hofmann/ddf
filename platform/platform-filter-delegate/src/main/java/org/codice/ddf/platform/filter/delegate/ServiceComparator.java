@@ -13,7 +13,6 @@
  */
 package org.codice.ddf.platform.filter.delegate;
 
-import java.io.Serializable;
 import java.util.Comparator;
 
 import org.osgi.framework.ServiceReference;
@@ -22,7 +21,7 @@ import org.osgi.framework.ServiceReference;
  * Comparator for OSGi {@link org.osgi.framework.ServiceReference} objects.
  *
  */
-public class ServiceComparator implements Comparator<ServiceReference>, Serializable {
+public class ServiceComparator implements Comparator<ServiceReference> {
 
     /**
      * Compares this ServiceReference with the specified ServiceReference for order using the OSGi

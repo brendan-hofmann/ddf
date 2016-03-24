@@ -14,10 +14,11 @@
 
 package org.codice.ddf.spatial.geocoding;
 
-import java.text.ParseException;
 import java.util.List;
 
 import org.codice.ddf.spatial.geocoding.context.NearbyLocation;
+
+import ddf.catalog.data.Metacard;
 
 /**
  * A {@code GeoEntryQueryable} provides methods for querying a resource containing GeoNames data.
@@ -43,7 +44,7 @@ public interface GeoEntryQueryable {
      * Each result is returned as a {@link NearbyLocation}, which describes the position of
      * {@code metacard} relative to the city.
      *
-     * @param location  a WKT identifying the area to search
+     * @param metacard  the {@link Metacard} around which to search
      * @param radiusInKm  the search radius, in kilometers
      * @param maxResults  the maximum number of results to return
      * @return the position of {@code metacard} relative to each of the nearest cities along with
@@ -52,6 +53,5 @@ public interface GeoEntryQueryable {
      *                                  {@code maxResults} is not a positive integer
      * @throws GeoEntryQueryException if an exception occurs while querying the GeoNames resource
      */
-    List<NearbyLocation> getNearestCities(String location, int radiusInKm, int maxResults)
-            throws ParseException;
+    List<NearbyLocation> getNearestCities(Metacard metacard, int radiusInKm, int maxResults);
 }

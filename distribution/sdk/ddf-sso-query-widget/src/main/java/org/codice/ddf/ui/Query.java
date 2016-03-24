@@ -72,11 +72,11 @@ public class Query extends HttpServlet {
 
     private static final String STS_SERVICE_URL = "https://localhost:8993/services/SecurityTokenService";
 
-    private transient CatalogFramework catalogFramework;
+    private CatalogFramework catalogFramework;
 
-    private transient SecurityManager securityManager;
+    private SecurityManager securityManager;
 
-    private transient FilterBuilder filterBuilder;
+    private FilterBuilder filterBuilder;
 
     public void setCatalogFramework(CatalogFramework catalogFramework) {
         this.catalogFramework = catalogFramework;

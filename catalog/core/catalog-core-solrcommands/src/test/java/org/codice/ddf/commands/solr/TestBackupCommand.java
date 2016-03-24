@@ -40,17 +40,8 @@ public class TestBackupCommand {
 
     ConsoleOutput consoleOutput;
 
-    private static String cipherSuites;
-
-    private static String protocols;
-
     @Before
     public void before() {
-        cipherSuites = System.getProperty("https.cipherSuites");
-        System.setProperty("https.cipherSuites",
-                "TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_DSS_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA");
-        protocols = System.getProperty("https.protocols");
-        System.setProperty("https.protocols", "TLSv1.1, TLSv1.2");
         consoleOutput = new ConsoleOutput();
         consoleOutput.interceptSystemOut();
 
@@ -60,16 +51,6 @@ public class TestBackupCommand {
     @After
     public void after() {
         consoleOutput.resetSystemOut();
-        if (cipherSuites != null) {
-            System.setProperty("https.cipherSuites", cipherSuites);
-        } else {
-            System.clearProperty("https.cipherSuites");
-        }
-        if (protocols != null) {
-            System.setProperty("https.protocols", protocols);
-        } else {
-            System.clearProperty("https.protocols");
-        }
     }
 
     @Test
@@ -130,14 +111,6 @@ public class TestBackupCommand {
 
         assertThat(consoleOutput.getOutput(), containsString(String.format("Backup command failed due to: %d", HttpStatus.SC_NOT_FOUND)));
     }
-
-    @Test (expected = IllegalArgumentException.class)
-    public void testSystemPropertiesNotSet() throws Exception {
-
-        BackupCommand backupCommand = new BackupCommand();
-        backupCommand.doExecute();
-    }
-
 
     private ResponseWrapper mockResponse(int statusCode, String responseBody) {
         return new ResponseWrapper(prepareResponse(statusCode, responseBody));
