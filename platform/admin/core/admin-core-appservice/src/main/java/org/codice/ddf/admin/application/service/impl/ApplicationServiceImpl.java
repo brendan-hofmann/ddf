@@ -854,7 +854,7 @@ public class ApplicationServiceImpl implements ApplicationService {
      * Data structure for storing various {@link Bundle} states
      */
     @SuppressWarnings("unused")
-    private static class BundleStateSet {
+    private class BundleStateSet {
         Set<Bundle> activeBundles = new HashSet<Bundle>();
 
         Set<Bundle> inactiveBundles = new HashSet<Bundle>();

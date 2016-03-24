@@ -78,7 +78,9 @@ public class UnavailableUrls {
      * @param url - no validation that the string is a valid URL
      */
     public void add(String url) {
-        checkers.putIfAbsent(url, new UrlChecker(url));
+        if (!checkers.containsKey(url)) {
+            checkers.put(url, new UrlChecker(url));
+        }
     }
 
     /**

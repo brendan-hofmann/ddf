@@ -16,7 +16,6 @@ package ddf.catalog.impl.filter;
 import java.util.Date;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
-import org.codice.ddf.platform.util.DateUtils;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.DateTimeFormatterBuilder;
 import org.joda.time.format.DateTimeParser;
@@ -26,8 +25,8 @@ import org.slf4j.ext.XLogger;
 
 public class TemporalFilter {
 
-    private static final XLogger LOGGER =
-            new XLogger(LoggerFactory.getLogger(TemporalFilter.class));
+    private static final XLogger LOGGER = new XLogger(
+            LoggerFactory.getLogger(TemporalFilter.class));
 
     private static DateTimeFormatter formatter;
 
@@ -41,8 +40,7 @@ public class TemporalFilter {
                 ISODateTimeFormat.dateTimeNoMillis().getParser(),
                 ISODateTimeFormat.basicDateTime().getParser(),
                 ISODateTimeFormat.basicDateTimeNoMillis().getParser()};
-        formatter = new DateTimeFormatterBuilder().append(null, parsers)
-                .toFormatter();
+        formatter = new DateTimeFormatterBuilder().append(null, parsers).toFormatter();
     }
 
     private Date startDate;
@@ -72,9 +70,10 @@ public class TemporalFilter {
     /**
      * Relative time search.
      *
-     * @param offset time range (in milliseconds) to search from current point in time. Positive offset
-     *               goes backwards in time. Example: offset of 30000 will perform a search where the
-     *               bounds are between now and 30 seconds prior to now.
+     * @param offset
+     *            time range (in milliseconds) to search from current point in time. Positive offset
+     *            goes backwards in time. Example: offset of 30000 will perform a search where the
+     *            bounds are between now and 30 seconds prior to now.
      */
     public TemporalFilter(long offset) {
         this(new Date(System.currentTimeMillis() - offset), new Date());
@@ -90,8 +89,7 @@ public class TemporalFilter {
         Date returnDate = null;
         if (date != null && !date.isEmpty()) {
             try {
-                returnDate = formatter.parseDateTime(date)
-                        .toDate();
+                returnDate = formatter.parseDateTime(date).toDate();
             } catch (IllegalArgumentException iae) {
                 LOGGER.warn(
                         "Could not parse out updated date in response, date will not being passed back.");
@@ -104,8 +102,10 @@ public class TemporalFilter {
      * Sets dates and performs basic validation. dtStart and dtEnd may be null, but not at the same
      * time.
      *
-     * @param dtStart lower bound of the temporal range search. When null it is set to time 0.
-     * @param endDate upper bound of the temporal range search. When null it is set to now.
+     * @param dtStart
+     *            lower bound of the temporal range search. When null it is set to time 0.
+     * @param endDate
+     *            upper bound of the temporal range search. When null it is set to now.
      */
     private void setDates(Date startDate, Date endDate) {
         if (startDate == null && endDate == null) {
@@ -125,20 +125,19 @@ public class TemporalFilter {
     }
 
     public Date getStartDate() {
-        return DateUtils.copy(startDate);
+        return startDate;
     }
 
     public void setStartDate(Date startDate) {
-        this.startDate = DateUtils.copy(startDate);
+        this.startDate = startDate;
     }
 
     public Date getEndDate() {
-        return DateUtils.copy(endDate);
+        return endDate;
     }
 
     public void setEndDate(Date endDate) {
-        this.endDate = DateUtils.copy(endDate);
-
+        this.endDate = endDate;
     }
 
     @Override

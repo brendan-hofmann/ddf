@@ -15,11 +15,8 @@ package ddf.catalog.transformer.xml;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
@@ -58,19 +55,17 @@ public class XmlResponseQueueTransformer extends AbstractXmlTransformer
     public static final int BUFFER_SIZE = 1024;
 
     private static class MetacardForkTask extends RecursiveTask<StringWriter> {
-        private static final long serialVersionUID = 1L;
+        private final ImmutableList<Result> resultList;
 
-        private final transient ImmutableList<Result> resultList;
+        private final ForkJoinPool fjp;
 
-        private final transient ForkJoinPool fjp;
-
-        private final transient GeometryTransformer geometryTransformer;
+        private final GeometryTransformer geometryTransformer;
 
         private final int threshold;
 
         private final AtomicBoolean cancelOperation;
 
-        private final transient MetacardMarshaller metacardMarshaller;
+        private final MetacardMarshaller metacardMarshaller;
 
         MetacardForkTask(ImmutableList<Result> resultList, ForkJoinPool fjp,
                 GeometryTransformer geometryTransformer, int threshold, MetacardMarshaller mcm) {
@@ -128,15 +123,6 @@ public class XmlResponseQueueTransformer extends AbstractXmlTransformer
                 throw new RuntimeException("Failure to write node; operation aborted", e);
             }
             return sw;
-        }
-
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            stream.defaultWriteObject();
-        }
-
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            stream.defaultReadObject();
         }
 
     } // end MetacardForkTask class
@@ -228,8 +214,7 @@ public class XmlResponseQueueTransformer extends AbstractXmlTransformer
 
             writer.endNode(); // metacards
 
-            ByteArrayInputStream bais = new ByteArrayInputStream(writer.makeString().getBytes(
-                    StandardCharsets.UTF_8));
+            ByteArrayInputStream bais = new ByteArrayInputStream(writer.makeString().getBytes());
 
             return new BinaryContentImpl(bais, mimeType);
         } catch (Exception e) {
