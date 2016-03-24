@@ -190,7 +190,7 @@ public class TestWfsSource {
             throws WfsException, SecurityServiceException {
 
         mockFactory = mock(SecureCxfClientFactory.class);
-        when(mockFactory.getClient()).thenReturn(mockWfs);
+        when(mockFactory.getUnsecuredClient()).thenReturn(mockWfs);
 
         // GetCapabilities Response
         when(mockWfs.getCapabilities(any(GetCapabilitiesRequest.class)))

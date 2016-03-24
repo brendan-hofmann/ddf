@@ -41,7 +41,7 @@ define([
                     this.listenTo(this.geoController, 'click:left', this.onMapLeftClick);
                     this.listenTo(this.geoController, 'doubleclick:left', this.onMapDoubleClick);
                 }
-                this.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>pointColor'));
+                this.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>pointColor'));
                 this.buildBillboard();
             },
 
@@ -132,7 +132,7 @@ define([
 
         Views.MultiPointView = Views.PointView.extend({
             initialize: function (options) {
-                options.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>multiPointColor'));
+                options.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>multiPointColor'));
                 Views.PointView.prototype.initialize.call(this, options);
             },
 
@@ -211,7 +211,7 @@ define([
 
         Views.LineView = Views.PointView.extend({
             initialize: function (options) {
-                options.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>lineColor'));
+                options.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>lineColor'));
                 this.color = options.color;
                 this.lineMap = {};
                 Views.PointView.prototype.initialize.call(this, options);
@@ -292,7 +292,7 @@ define([
 
         Views.MultiLineView = Views.LineView.extend({
             initialize: function (options) {
-                options.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>multiLineColor'));
+                options.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>multiLineColor'));
                 this.lineMap = {};
                 Views.PointView.prototype.initialize.call(this, options);
             },
@@ -311,10 +311,10 @@ define([
 
         Views.RegionView = Views.PointView.extend({
             initialize: function (options) {
-                this.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>polygonColor'));
+                this.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>polygonColor'));
                 options.color = this.color;
 
-                this.polygonColor = options.polygonColor || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>polygonColor'));
+                this.polygonColor = options.polygonColor || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>polygonColor'));
 
                 this.polygonColor = Cesium.Color.fromRgba(this.polygonColor.toRgba());
                 if (this.polygonColor.withAlpha) {
@@ -519,10 +519,10 @@ define([
 
         Views.MultiRegionView = Views.RegionView.extend({
             initialize: function (options) {
-                this.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>multiPolygonColor'));
+                this.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>multiPolygonColor'));
                 options.color = this.color;
 
-                this.polygonColor = options.polygonColor || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>multiPolygonColor'));
+                this.polygonColor = options.polygonColor || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>multiPolygonColor'));
                 this.polygonColor = Cesium.Color.fromRgba(this.polygonColor.toRgba());
                 if (this.polygonColor.withAlpha) {
                     this.polygonColor = this.polygonColor.withAlpha(0.2);
@@ -577,8 +577,8 @@ define([
 
         Views.GeometryCollectionView = Views.PointView.extend({
             initialize: function (options) {
-                options.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>geometryCollectionColor'));
-                options.polygonColor = options.polygonColor || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>mapColors>geometryCollectionColor'));
+                options.color = options.color || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>geometryCollectionColor'));
+                options.polygonColor = options.polygonColor || Cesium.Color.fromCssColorString(Application.UserModel.get('user>preferences>geometryCollectionColor'));
                 options.polygonColor = Cesium.Color.fromRgba(options.polygonColor.toRgba());
                 if (options.polygonColor.withAlpha) {
                     options.polygonColor = options.polygonColor.withAlpha(0.2);

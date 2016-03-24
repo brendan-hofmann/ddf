@@ -228,7 +228,7 @@ public abstract class AbstractStsRealm extends AuthenticatingRealm
                 stsClient.setOnBehalfOf(authToken);
                 stsClient.setTokenType(getAssertionType());
                 stsClient.setKeyType(getKeyType());
-                stsClient.setKeySize(Integer.parseInt(getKeySize()));
+                stsClient.setKeySize(Integer.valueOf(getKeySize()));
                 token = stsClient.requestSecurityToken(stsAddress);
                 LOGGER.debug("Finished requesting security token.");
                 SecurityLogger.logInfo("Finished requesting security token.");
@@ -266,7 +266,7 @@ public abstract class AbstractStsRealm extends AuthenticatingRealm
                 stsClient.setWsdlLocation(stsAddress);
                 stsClient.setTokenType(getAssertionType());
                 stsClient.setKeyType(getKeyType());
-                stsClient.setKeySize(Integer.parseInt(getKeySize()));
+                stsClient.setKeySize(Integer.valueOf(getKeySize()));
                 stsClient.setAllowRenewing(true);
                 token = stsClient.renewSecurityToken(securityToken);
                 LOGGER.debug("Finished renewing security token.");
@@ -296,10 +296,10 @@ public abstract class AbstractStsRealm extends AuthenticatingRealm
         builder.append("STS endpoint name: " + stsClient.getEndpointQName() + "\n");
 
         Map<String, Object> map = stsClient.getProperties();
-        Set<Map.Entry<String, Object>> entries = map.entrySet();
+        Set<String> keys = map.keySet();
         builder.append("\nSTS Client properties:\n");
-        for(Map.Entry<String, Object> entry : map.entrySet()) {
-            builder.append("key: " + entry.getKey() + "; value: " + entry.getValue() + "\n");
+        for (String key : keys) {
+            builder.append("key: " + key + "; value: " + map.get(key) + "\n");
         }
 
         LOGGER.debug(builder.toString());

@@ -1,16 +1,16 @@
 /**
  * Copyright (c) Codice Foundation
- * <p/>
+ * <p>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
  * is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
- */
+ **/
 package org.codice.ddf.spatial.ogc.csw.catalog.converter;
 
 import java.io.ByteArrayInputStream;
@@ -114,7 +114,7 @@ public class CswTransformProvider implements Converter {
         try {
             XmlPullParser parser = XppFactory.createDefaultParser();
             new HierarchicalStreamCopier()
-                    .copy(new XppReader(new InputStreamReader(content.getInputStream(), StandardCharsets.UTF_8), parser),
+                    .copy(new XppReader(new InputStreamReader(content.getInputStream()), parser),
                             writer);
         } catch (XmlPullParserException e) {
             throw new ConversionException("Unable to copy metadata to XML Output.", e);
@@ -147,29 +147,23 @@ public class CswTransformProvider implements Converter {
      */
     @Override
     public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
-        Object outputSchema = context.get(CswConstants.OUTPUT_SCHEMA_PARAMETER);
-        Object typeName = context.get(CswConstants.TYPE_NAME_PARAMETER);
+        Object arg = context.get(CswConstants.OUTPUT_SCHEMA_PARAMETER);
         InputTransformer transformer = null;
-        if (StringUtils.equals(CswConstants.CSW_OUTPUT_SCHEMA, (String) outputSchema) || StringUtils
-                .equals(CswConstants.CSW_RECORD, (String) typeName) ||
-                (outputSchema == null && typeName == null)) {
+        if (arg == null || CswConstants.CSW_OUTPUT_SCHEMA.equals((String) arg)) {
             transformer = inputTransformerManager
                     .<InputTransformer>getTransformerBySchema(CswConstants.CSW_OUTPUT_SCHEMA);
             if (transformer != null) {
                 return ((CswRecordConverter) transformer).unmarshal(reader, context);
             }
-        } else if (outputSchema != null) {
-            String outputSchemaStr = (String) outputSchema;
-            transformer = inputTransformerManager
-                    .<InputTransformer>getTransformerBySchema(outputSchemaStr);
         } else {
-            String typeNameStr = (String) typeName;
-            transformer = inputTransformerManager.<InputTransformer>getTransformerById(typeNameStr);
+            String outputSchema = (String) arg;
+            transformer = inputTransformerManager
+                    .<InputTransformer>getTransformerBySchema(outputSchema);
         }
 
         if (transformer == null) {
             throw new ConversionException(
-                    "Unable to locate a transformer for output schema: " + outputSchema);
+                    "Unable to locate a transformer for output schema: " + arg);
         }
 
         Metacard metacard = null;
