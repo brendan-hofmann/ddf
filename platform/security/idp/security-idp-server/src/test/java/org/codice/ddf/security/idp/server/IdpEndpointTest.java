@@ -15,8 +15,6 @@ package org.codice.ddf.security.idp.server;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.text.StringContains.containsString;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -30,12 +28,7 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.TimeZone;
+import java.util.Arrays;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -56,6 +49,7 @@ import org.codice.ddf.security.common.jaxrs.RestSecurity;
 import org.codice.ddf.security.handler.api.PKIAuthenticationTokenFactory;
 import org.codice.ddf.security.policy.context.ContextPolicy;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -118,35 +112,6 @@ public class IdpEndpointTest {
 
     IdpEndpoint idpEndpoint;
 
-    String relayState;
-
-    String requestCertificateAttributeName;
-
-    StringBuffer requestURL;
-
-    String samlConditionDateFormat;
-
-    String signature;
-
-    String signatureAlgorithm;
-
-    String ssoSAMLResponse;
-
-    public static Document readXml(InputStream is)
-            throws SAXException, IOException, ParserConfigurationException {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-
-        dbf.setValidating(false);
-        dbf.setIgnoringComments(false);
-        dbf.setIgnoringElementContentWhitespace(true);
-        dbf.setNamespaceAware(true);
-
-        DocumentBuilder db = dbf.newDocumentBuilder();
-        db.setEntityResolver(new DOMUtils.NullResolver());
-
-        return db.parse(is);
-    }
-
     @Before
     public void setup() throws IOException, SecurityServiceException, ParserConfigurationException,
             SAXException {
@@ -186,7 +151,7 @@ public class IdpEndpointTest {
         SecurityAssertion securityAssertion = mock(SecurityAssertion.class);
         SecurityToken securityToken = mock(SecurityToken.class);
         when(subject.getPrincipals()).thenReturn(principalCollection);
-        when(principalCollection.asList()).thenReturn(Collections.singletonList(securityAssertion));
+        when(principalCollection.asList()).thenReturn(Arrays.asList(securityAssertion));
         when(securityAssertion.getSecurityToken()).thenReturn(securityToken);
         when(securityToken.getToken()).thenReturn(readDocument("/saml.xml").getDocumentElement());
         when(securityManager.getSubject(anyObject())).thenReturn(subject);
@@ -197,7 +162,7 @@ public class IdpEndpointTest {
                 encryptionService);
         idpEndpoint.setStrictSignature(true);
         idpEndpoint.init();
-        idpEndpoint.setSpMetadata(Collections.singletonList(spMetadata));
+        idpEndpoint.setSpMetadata(Arrays.asList(spMetadata));
         idpEndpoint.setSecurityManager(securityManager);
         PKIAuthenticationTokenFactory pkiAuthenticationTokenFactory =
                 new PKIAuthenticationTokenFactory();
@@ -207,27 +172,15 @@ public class IdpEndpointTest {
         idpEndpoint.cookieCache.cacheSamlAssertion("1",
                 readDocument("/saml.xml").getDocumentElement());
         idpEndpoint.setExpirationTime(30);
-
-        relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
-        requestCertificateAttributeName = "javax.servlet.request.X509Certificate";
-        requestURL = new StringBuffer("https://www.example.com");
-        samlConditionDateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
-        signature = authNRequestGetSignature;
-        signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
-        ssoSAMLResponse = "https://localhost:8993/services/saml/sso?SAMLResponse=";
     }
 
     @Test
     public void testShowPostLogin() throws WSSecurityException {
         idpEndpoint.setStrictSignature(false);
         String samlRequest = authNRequestPost;
-        relayState = "94697cdc-e64f-4edf-b26a-52c14c2314dd";
+        String relayState = "94697cdc-e64f-4edf-b26a-52c14c2314dd";
         HttpServletRequest request = mock(HttpServletRequest.class);
-
-        when(request.isSecure()).thenReturn(true);
-
         Response response = idpEndpoint.showPostLogin(samlRequest, relayState, request);
-
         assertThat(response.getEntity()
                 .toString(), containsString("SAMLRequest"));
         assertThat(response.getEntity()
@@ -239,16 +192,16 @@ public class IdpEndpointTest {
     @Test
     public void testShowGetLogin() throws WSSecurityException {
         String samlRequest = authNRequestGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
         HttpServletRequest request = mock(HttpServletRequest.class);
-
-        when(request.isSecure()).thenReturn(true);
-
         Response response = idpEndpoint.showGetLogin(samlRequest,
                 relayState,
                 signatureAlgorithm,
                 signature,
                 request);
-
         assertThat(response.getEntity()
                 .toString(), containsString("SAMLRequest"));
         assertThat(response.getEntity()
@@ -257,46 +210,14 @@ public class IdpEndpointTest {
                 .toString(), containsString("ACSURL"));
     }
 
-    @Test
-    public void testShowGetLoginNoRelayState() throws WSSecurityException {
-        String samlRequest = authNRequestGet;
-        idpEndpoint.setStrictSignature(false);
-        HttpServletRequest request = mock(HttpServletRequest.class);
-
-        when(request.isSecure()).thenReturn(true);
-
-        Response response = idpEndpoint.showGetLogin(samlRequest,
-                null,
-                signatureAlgorithm,
-                signature,
-                request);
-        assertThat(response.getEntity()
-                .toString(), containsString("SAMLRequest"));
-        assertThat(response.getEntity()
-                .toString(), containsString("ACSURL"));
-    }
-
-    @Test
-    public void testShowGetLoginNotSecure() throws WSSecurityException {
-        String samlRequest = authNRequestGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-
-        Response response = idpEndpoint.showGetLogin(samlRequest,
-                relayState,
-                signatureAlgorithm,
-                signature,
-                request);
-
-        assertThat(response.getEntity()
-                .toString(), containsString("SAMLResponse"));
-        assertThat(response.getEntity()
-                .toString(), containsString("RelayState"));
-    }
-
+    /*
+    This test is currently ignored there's no logout service there
+    DDF-1605
+     */
+    @Ignore
     @Test
     public void testRetrieveMetadata() throws WSSecurityException, CertificateEncodingException {
         Response response = idpEndpoint.retrieveMetadata();
-
         assertThat(response.getEntity()
                 .toString(), containsString("IDPSSODescriptor"));
         assertThat(response.getEntity()
@@ -308,14 +229,15 @@ public class IdpEndpointTest {
     @Test
     public void testProcessLoginBasic() {
         String samlRequest = authNRequestGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //admin:admin
         when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Basic YWRtaW46YWRtaW4=");
-
         Response response = idpEndpoint.processLogin(samlRequest,
                 relayState,
                 Idp.USER_PASS,
@@ -323,48 +245,28 @@ public class IdpEndpointTest {
                 signature,
                 SamlProtocol.REDIRECT_BINDING,
                 request);
-
         assertThat(response.getEntity()
-                .toString(), containsString(ssoSAMLResponse));
+                        .toString(),
+                containsString("https://localhost:8993/services/saml/sso?SAMLResponse="));
         assertThat(response.getEntity()
                 .toString(), containsString("RelayState="));
     }
 
     @Test
-    public void testProcessLoginBasicNotSecure() {
+    public void testProcessLoginPki() throws CertificateEncodingException {
         String samlRequest = authNRequestGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
 
+        HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
-        //admin:admin
-        when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Basic YWRtaW46YWRtaW4=");
-
-        Response response = idpEndpoint.processLogin(samlRequest,
-                relayState,
-                Idp.USER_PASS,
-                signatureAlgorithm,
-                signature,
-                SamlProtocol.REDIRECT_BINDING,
-                request);
-
-        assertThat(response.getStatus(), is(400));
-    }
-
-    @Test
-    public void testProcessLoginPki() throws CertificateEncodingException, WSSecurityException {
-        String samlRequest = authNRequestGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        X509Certificate x509Certificate = mock(X509Certificate.class);
-
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
-        when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //dummy cert
-        when((X509Certificate[]) request.getAttribute(requestCertificateAttributeName)).thenReturn(
+        X509Certificate x509Certificate = mock(X509Certificate.class);
+        when((X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate")).thenReturn(
                 new X509Certificate[] {x509Certificate});
         when(x509Certificate.getEncoded()).thenReturn(new byte[48]);
-
         Response response = idpEndpoint.processLogin(samlRequest,
                 relayState,
                 Idp.PKI,
@@ -372,9 +274,9 @@ public class IdpEndpointTest {
                 signature,
                 SamlProtocol.REDIRECT_BINDING,
                 request);
-
         assertThat(response.getEntity()
-                .toString(), containsString(ssoSAMLResponse));
+                        .toString(),
+                containsString("https://localhost:8993/services/saml/sso?SAMLResponse="));
         assertThat(response.getEntity()
                 .toString(), containsString("RelayState="));
     }
@@ -383,17 +285,16 @@ public class IdpEndpointTest {
     public void testProcessLoginPkiPost() throws CertificateEncodingException {
         idpEndpoint.setStrictSignature(false);
         String samlRequest = authNRequestPkiPost;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        X509Certificate x509Certificate = mock(X509Certificate.class);
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //dummy cert
-        when((X509Certificate[]) request.getAttribute(requestCertificateAttributeName)).thenReturn(
+        X509Certificate x509Certificate = mock(X509Certificate.class);
+        when((X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate")).thenReturn(
                 new X509Certificate[] {x509Certificate});
         when(x509Certificate.getEncoded()).thenReturn(new byte[48]);
-
         Response response = idpEndpoint.processLogin(samlRequest,
                 relayState,
                 Idp.PKI,
@@ -401,7 +302,6 @@ public class IdpEndpointTest {
                 null,
                 SamlProtocol.POST_BINDING,
                 request);
-
         assertThat(response.getEntity()
                 .toString(), containsString("Form Submit"));
         assertThat(response.getEntity()
@@ -413,12 +313,13 @@ public class IdpEndpointTest {
     @Test
     public void testProcessLoginGuest() throws CertificateEncodingException {
         String samlRequest = authNRequestGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
         HttpServletRequest request = mock(HttpServletRequest.class);
-
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
-
         Response response = idpEndpoint.processLogin(samlRequest,
                 relayState,
                 Idp.GUEST,
@@ -426,96 +327,54 @@ public class IdpEndpointTest {
                 signature,
                 SamlProtocol.REDIRECT_BINDING,
                 request);
-
         assertThat(response.getEntity()
-                .toString(), containsString(ssoSAMLResponse));
+                        .toString(),
+                containsString("https://localhost:8993/services/saml/sso?SAMLResponse="));
         assertThat(response.getEntity()
                 .toString(), containsString("RelayState="));
     }
 
     @Test
-    public void testShowGetLoginWithValidCookie()
+    public void testShowGetLoginWithCookie()
             throws CertificateEncodingException, WSSecurityException {
         String samlRequest = authNRequestGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
         HttpServletRequest request = mock(HttpServletRequest.class);
         Cookie cookie = mock(Cookie.class);
-
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         when(request.getCookies()).thenReturn(new Cookie[] {cookie});
-        when(cookie.getName()).thenReturn(IdpEndpoint.COOKIE);
+        when(cookie.getName()).thenReturn("org.codice.ddf.security.idp.session");
         when(cookie.getValue()).thenReturn("1");
-
         Response response = idpEndpoint.showGetLogin(samlRequest,
                 relayState,
                 signatureAlgorithm,
                 signature,
                 request);
-
         assertThat(response.getEntity()
-                .toString(), containsString(ssoSAMLResponse));
+                        .toString(),
+                containsString("https://localhost:8993/services/saml/sso?SAMLResponse="));
         assertThat(response.getEntity()
                 .toString(), containsString("RelayState="));
-    }
-
-    @Test
-    public void testShowGetLoginWithCookieAssertionAfterTimeBounds()
-            throws CertificateEncodingException, WSSecurityException, SAXException, IOException,
-            ParserConfigurationException {
-        String samlRequest = authNRequestGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        Cookie cookie = mock(Cookie.class);
-
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-        calendar.add(Calendar.SECOND, -1);
-        Date beforeNow = calendar.getTime();
-        DateFormat dateFormat = new SimpleDateFormat(samlConditionDateFormat);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-        Element assertionElement = readDocument("/saml.xml").getDocumentElement();
-
-        //Change the NotOnOrAfter Date on the SAML Assertion to be before "now"
-        assertionElement.getElementsByTagName("saml2:Conditions")
-                .item(0)
-                .getAttributes()
-                .getNamedItem("NotOnOrAfter")
-                .setNodeValue(dateFormat.format(beforeNow));
-
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
-        when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
-        when(request.getCookies()).thenReturn(new Cookie[] {cookie});
-        when(cookie.getName()).thenReturn(IdpEndpoint.COOKIE);
-        when(cookie.getValue()).thenReturn("2");
-
-        idpEndpoint.cookieCache.cacheSamlAssertion("2", assertionElement);
-        assertNotNull(idpEndpoint.cookieCache.getSamlAssertion("2"));
-
-        Response response = idpEndpoint.showGetLogin(samlRequest,
-                relayState,
-                signatureAlgorithm,
-                signature,
-                request);
-
-        assertThat(response.getEntity()
-                .toString(), containsString("<title>Login</title>"));
-        assertNull(idpEndpoint.cookieCache.getSamlAssertion("2"));
     }
 
     @Test
     public void testFailedLogin() throws SecurityServiceException {
-        String samlRequest = authNRequestGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-
         SecurityManager securityManager = mock(SecurityManager.class);
         when(securityManager.getSubject(anyObject())).thenThrow(new SecurityServiceException("test"));
         idpEndpoint.setSecurityManager(securityManager);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
-        when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
+        String samlRequest = authNRequestGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
 
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
+        when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         Response response = idpEndpoint.processLogin(samlRequest,
                 relayState,
                 Idp.GUEST,
@@ -523,33 +382,32 @@ public class IdpEndpointTest {
                 signature,
                 SamlProtocol.REDIRECT_BINDING,
                 request);
-
         assertThat(response.getStatus(), is(401));
     }
 
     @Test
     public void testExpiredLoginCookie() throws SecurityServiceException, WSSecurityException {
-        String samlRequest = authNRequestGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        Cookie cookie = mock(Cookie.class);
-
         SecurityManager securityManager = mock(SecurityManager.class);
         when(securityManager.getSubject(anyObject())).thenThrow(new SecurityServiceException("test"));
         idpEndpoint.setSecurityManager(securityManager);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        String samlRequest = authNRequestGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        Cookie cookie = mock(Cookie.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         when(request.getCookies()).thenReturn(new Cookie[] {cookie});
-        when(cookie.getName()).thenReturn(IdpEndpoint.COOKIE);
+        when(cookie.getName()).thenReturn("org.codice.ddf.security.idp.session");
         when(cookie.getValue()).thenReturn("2");
-
         Response response = idpEndpoint.showGetLogin(samlRequest,
                 relayState,
                 signatureAlgorithm,
                 signature,
                 request);
-
         //the only cookie that should exist is the "1" cookie so "2" should send us to the login webapp
         assertThat(response.getEntity()
                 .toString(), containsString("<title>Login</title>"));
@@ -558,28 +416,28 @@ public class IdpEndpointTest {
     @Test
     public void testLoginForceAuthnCookie()
             throws SecurityServiceException, WSSecurityException, IOException {
-        String samlRequest = RestSecurity.deflateAndBase64Encode(authNRequestGetForce);
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        Cookie cookie = mock(Cookie.class);
-
         SecurityManager securityManager = mock(SecurityManager.class);
         when(securityManager.getSubject(anyObject())).thenThrow(new SecurityServiceException("test"));
         idpEndpoint.setSecurityManager(securityManager);
         idpEndpoint.setStrictSignature(false);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        String samlRequest = RestSecurity.deflateAndBase64Encode(authNRequestGetForce);
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        Cookie cookie = mock(Cookie.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         when(request.getCookies()).thenReturn(new Cookie[] {cookie});
-        when(cookie.getName()).thenReturn(IdpEndpoint.COOKIE);
+        when(cookie.getName()).thenReturn("org.codice.ddf.security.idp.session");
         when(cookie.getValue()).thenReturn("1");
-
         Response response = idpEndpoint.showGetLogin(samlRequest,
                 relayState,
                 signatureAlgorithm,
                 signature,
                 request);
-
         assertThat(response.getEntity()
                 .toString(), containsString("<title>Login</title>"));
     }
@@ -587,28 +445,29 @@ public class IdpEndpointTest {
     @Test
     public void testPassiveLoginPki()
             throws SecurityServiceException, WSSecurityException, CertificateEncodingException {
-        String samlRequest = authNRequestPassivePkiGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        X509Certificate x509Certificate = mock(X509Certificate.class);
-
         idpEndpoint.setStrictSignature(false);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        String samlRequest = authNRequestPassivePkiGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //dummy cert
-        when((X509Certificate[]) request.getAttribute(requestCertificateAttributeName)).thenReturn(
+        X509Certificate x509Certificate = mock(X509Certificate.class);
+        when((X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate")).thenReturn(
                 new X509Certificate[] {x509Certificate});
         when(x509Certificate.getEncoded()).thenReturn(new byte[48]);
-
         Response response = idpEndpoint.showGetLogin(samlRequest,
                 relayState,
                 signatureAlgorithm,
                 signature,
                 request);
-
         assertThat(response.getEntity()
-                .toString(), containsString(ssoSAMLResponse));
+                        .toString(),
+                containsString("https://localhost:8993/services/saml/sso?SAMLResponse="));
         assertThat(response.getEntity()
                 .toString(), containsString("RelayState="));
     }
@@ -616,22 +475,20 @@ public class IdpEndpointTest {
     @Test
     public void testPassiveLoginPkiPost()
             throws SecurityServiceException, WSSecurityException, CertificateEncodingException {
-        String samlRequest = authNRequestPassivePkiPost;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        X509Certificate x509Certificate = mock(X509Certificate.class);
-
         idpEndpoint.setStrictSignature(false);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        String samlRequest = authNRequestPassivePkiPost;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //dummy cert
-        when((X509Certificate[]) request.getAttribute(requestCertificateAttributeName)).thenReturn(
+        X509Certificate x509Certificate = mock(X509Certificate.class);
+        when((X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate")).thenReturn(
                 new X509Certificate[] {x509Certificate});
         when(x509Certificate.getEncoded()).thenReturn(new byte[48]);
-
         Response response = idpEndpoint.showPostLogin(samlRequest, relayState, request);
-
         assertThat(response.getEntity()
                 .toString(), containsString("Form Submit"));
         assertThat(response.getEntity()
@@ -644,23 +501,24 @@ public class IdpEndpointTest {
     public void testPassiveLoginPkiFail()
             throws SecurityServiceException, WSSecurityException, CertificateEncodingException,
             IOException {
-        String samlRequest = authNRequestPassivePkiGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        X509Certificate x509Certificate = mock(X509Certificate.class);
-
         SecurityManager securityManager = mock(SecurityManager.class);
         when(securityManager.getSubject(anyObject())).thenThrow(new SecurityServiceException("test"));
         idpEndpoint.setSecurityManager(securityManager);
         idpEndpoint.setStrictSignature(false);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        String samlRequest = authNRequestPassivePkiGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //dummy cert
-        when((X509Certificate[]) request.getAttribute(requestCertificateAttributeName)).thenReturn(
+        X509Certificate x509Certificate = mock(X509Certificate.class);
+        when((X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate")).thenReturn(
                 new X509Certificate[] {x509Certificate});
         when(x509Certificate.getEncoded()).thenReturn(new byte[48]);
-
         Response response = idpEndpoint.showGetLogin(samlRequest,
                 relayState,
                 signatureAlgorithm,
@@ -670,7 +528,6 @@ public class IdpEndpointTest {
                 .toString(), "SAMLResponse=", "RelayState");
         responseStr = URLDecoder.decode(responseStr, "UTF-8");
         responseStr = RestSecurity.inflateBase64(responseStr);
-
         //the only cookie that should exist is the "1" cookie so "2" should send us to the login webapp
         assertThat(responseStr, containsString("status:AuthnFailed"));
     }
@@ -679,24 +536,22 @@ public class IdpEndpointTest {
     public void testPassiveLoginPkiSignatureErrorPost()
             throws SecurityServiceException, WSSecurityException, CertificateEncodingException,
             IOException {
-        String samlRequest = authNRequestPassivePkiPost;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        X509Certificate x509Certificate = mock(X509Certificate.class);
-
         SecurityManager securityManager = mock(SecurityManager.class);
         when(securityManager.getSubject(anyObject())).thenThrow(new SecurityServiceException("test"));
         idpEndpoint.setSecurityManager(securityManager);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        String samlRequest = authNRequestPassivePkiPost;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //dummy cert
-        when((X509Certificate[]) request.getAttribute(requestCertificateAttributeName)).thenReturn(
+        X509Certificate x509Certificate = mock(X509Certificate.class);
+        when((X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate")).thenReturn(
                 new X509Certificate[] {x509Certificate});
         when(x509Certificate.getEncoded()).thenReturn(new byte[48]);
-
         Response response = idpEndpoint.showPostLogin(samlRequest, relayState, request);
-
         assertThat(response.getStatus(), is(500));
     }
 
@@ -704,18 +559,13 @@ public class IdpEndpointTest {
     public void testPassiveLoginPkiUnsupportedPost()
             throws SecurityServiceException, WSSecurityException, CertificateEncodingException,
             IOException {
-        String samlRequest = authNRequestPassivePkiPost;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        X509Certificate x509Certificate = mock(X509Certificate.class);
-
+        SecurityManager securityManager = mock(SecurityManager.class);
         Subject subject = mock(Subject.class);
         PrincipalCollection principalCollection = mock(PrincipalCollection.class);
         SecurityAssertion securityAssertion = mock(SecurityAssertion.class);
         SecurityToken securityToken = mock(SecurityToken.class);
-        SecurityManager securityManager = mock(SecurityManager.class);
-
         when(subject.getPrincipals()).thenReturn(principalCollection);
-        when(principalCollection.asList()).thenReturn(Collections.singletonList(securityAssertion));
+        when(principalCollection.asList()).thenReturn(Arrays.asList(securityAssertion));
         when(securityAssertion.getSecurityToken()).thenReturn(securityToken);
         //this mock element is what will cause the signature error
         when(securityToken.getToken()).thenReturn(mock(Element.class));
@@ -723,20 +573,24 @@ public class IdpEndpointTest {
         idpEndpoint.setSecurityManager(securityManager);
         idpEndpoint.setStrictSignature(false);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        String samlRequest = authNRequestPassivePkiPost;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //dummy cert
-        when((X509Certificate[]) request.getAttribute(requestCertificateAttributeName)).thenReturn(
+        X509Certificate x509Certificate = mock(X509Certificate.class);
+        when((X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate")).thenReturn(
                 new X509Certificate[] {x509Certificate});
         when(x509Certificate.getEncoded()).thenReturn(new byte[48]);
-
         Response response = idpEndpoint.showPostLogin(samlRequest, relayState, request);
         String responseStr = StringUtils.substringBetween(response.getEntity()
-                .toString(), "SAMLResponse\" value=\"", "\" />");
+                        .toString(),
+                "SAMLResponse\" value=\"",
+                "\" />\n" + "     <input type=\"hidden\" name=\"RelayState");
         responseStr = URLDecoder.decode(responseStr, "UTF-8");
         responseStr = new String(Base64.decodeBase64(responseStr));
-
         //the only cookie that should exist is the "1" cookie so "2" should send us to the login webapp
         assertThat(responseStr, containsString("status:RequestUnsupported"));
     }
@@ -745,17 +599,13 @@ public class IdpEndpointTest {
     public void testPassiveLoginPkiUnsupported()
             throws SecurityServiceException, WSSecurityException, CertificateEncodingException,
             IOException {
-        String samlRequest = authNRequestPassivePkiGet;
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        X509Certificate x509Certificate = mock(X509Certificate.class);
-
+        SecurityManager securityManager = mock(SecurityManager.class);
         Subject subject = mock(Subject.class);
         PrincipalCollection principalCollection = mock(PrincipalCollection.class);
         SecurityAssertion securityAssertion = mock(SecurityAssertion.class);
         SecurityToken securityToken = mock(SecurityToken.class);
-        SecurityManager securityManager = mock(SecurityManager.class);
         when(subject.getPrincipals()).thenReturn(principalCollection);
-        when(principalCollection.asList()).thenReturn(Collections.singletonList(securityAssertion));
+        when(principalCollection.asList()).thenReturn(Arrays.asList(securityAssertion));
         when(securityAssertion.getSecurityToken()).thenReturn(securityToken);
         //this mock element is what will cause the signature error
         when(securityToken.getToken()).thenReturn(mock(Element.class));
@@ -763,14 +613,19 @@ public class IdpEndpointTest {
         idpEndpoint.setSecurityManager(securityManager);
         idpEndpoint.setStrictSignature(false);
 
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        String samlRequest = authNRequestPassivePkiGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
         //dummy cert
-        when((X509Certificate[]) request.getAttribute(requestCertificateAttributeName)).thenReturn(
+        X509Certificate x509Certificate = mock(X509Certificate.class);
+        when((X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate")).thenReturn(
                 new X509Certificate[] {x509Certificate});
         when(x509Certificate.getEncoded()).thenReturn(new byte[48]);
-
         Response response = idpEndpoint.showGetLogin(samlRequest,
                 relayState,
                 signatureAlgorithm,
@@ -780,7 +635,6 @@ public class IdpEndpointTest {
                 .toString(), "SAMLResponse=", "RelayState");
         responseStr = URLDecoder.decode(responseStr, "UTF-8");
         responseStr = RestSecurity.inflateBase64(responseStr);
-
         //the only cookie that should exist is the "1" cookie so "2" should send us to the login webapp
         assertThat(responseStr, containsString("status:RequestUnsupported"));
     }
@@ -788,12 +642,13 @@ public class IdpEndpointTest {
     @Test
     public void testUnsupportedAuthMethod() {
         String samlRequest = authNRequestGet;
+        String relayState = "ef95c04b-6c05-4d12-b65f-dd32fed8811e";
+        String signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+        String signature = authNRequestGetSignature;
+
         HttpServletRequest request = mock(HttpServletRequest.class);
-
-        when(request.isSecure()).thenReturn(true);
-        when(request.getRequestURL()).thenReturn(requestURL);
+        when(request.getRequestURL()).thenReturn(new StringBuffer("https://www.example.com"));
         when(request.getAttribute(ContextPolicy.ACTIVE_REALM)).thenReturn("*");
-
         Response response = idpEndpoint.processLogin(samlRequest,
                 relayState,
                 "notsupported",
@@ -801,14 +656,29 @@ public class IdpEndpointTest {
                 signature,
                 SamlProtocol.Binding.SOAP.getUri(),
                 request);
-
         assertThat(response.getStatus(), is(400));
     }
 
     private Document readDocument(String name)
             throws SAXException, IOException, ParserConfigurationException {
-        try (InputStream inStream = getClass().getResourceAsStream(name)) {
+        try (InputStream inStream = getClass().getResourceAsStream(name);) {
             return readXml(inStream);
         }
+    }
+
+    public static Document readXml(InputStream is)
+            throws SAXException, IOException, ParserConfigurationException {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+
+        dbf.setValidating(false);
+        dbf.setIgnoringComments(false);
+        dbf.setIgnoringElementContentWhitespace(true);
+        dbf.setNamespaceAware(true);
+
+        DocumentBuilder db = null;
+        db = dbf.newDocumentBuilder();
+        db.setEntityResolver(new DOMUtils.NullResolver());
+
+        return db.parse(is);
     }
 }

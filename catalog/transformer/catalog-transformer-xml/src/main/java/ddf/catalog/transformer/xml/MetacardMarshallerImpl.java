@@ -19,8 +19,6 @@ import java.io.InputStreamReader;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
@@ -213,10 +211,6 @@ public class MetacardMarshallerImpl implements MetacardMarshaller {
             case XML:
                 xmlValue = value.toString().replaceAll("[<][?]xml.*[?][>]", "");
                 break;
-            default:
-                LOGGER.warn("Unsupported attribute: {}", format);
-                xmlValue = value.toString();
-                break;
             }
 
             // Write the node if we were able to convert it.
@@ -244,10 +238,8 @@ public class MetacardMarshallerImpl implements MetacardMarshaller {
         }
     }
 
-    private String geoToXml(BinaryContent content, XmlPullParser parser)
-            throws UnsupportedEncodingException {
-        XppReader source = new XppReader(new InputStreamReader(content.getInputStream(),
-                StandardCharsets.UTF_8.name()), parser);
+    private String geoToXml(BinaryContent content, XmlPullParser parser) {
+        XppReader source = new XppReader(new InputStreamReader(content.getInputStream()), parser);
 
         // if multi-threading, cannot abstract PrintWriter to class member
         PrintWriter destination = writerProvider.build(Metacard.class);

@@ -424,9 +424,7 @@ public class ConfigurationAdmin implements ConfigurationAdminMBean {
 
         final List<Map<String, Object>> metatype = findMetatypeForConfig(config);
         List<Map.Entry<String, Object>> configEntries = new ArrayList<>();
-
-        CollectionUtils.addAll(configEntries, configurationTable.entrySet().iterator());
-
+        configEntries.addAll(configurationTable.entrySet());
         if (metatype == null) {
             throw loggedException("Could not find metatype for " + pid);
         }
@@ -560,7 +558,7 @@ public class ConfigurationAdmin implements ConfigurationAdminMBean {
         mBeanServer = server;
     }
 
-    private static class CardinalityTransformer implements Transformer {
+    private class CardinalityTransformer implements Transformer {
         private final List<Map<String, Object>> metatype;
 
         private final String pid;

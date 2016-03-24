@@ -37,7 +37,7 @@ public abstract class SolrCommands extends OsgiCommandSupport {
 
     private static final Color SUCCESS_COLOR = Ansi.Color.GREEN;
 
-    protected ConfigurationAdmin configurationAdmin;
+    protected static ConfigurationAdmin configurationAdmin;
 
     protected abstract Object doExecute() throws Exception;
 
@@ -69,5 +69,7 @@ public abstract class SolrCommands extends OsgiCommandSupport {
     protected void printErrorMessage(String message) {
         printColor(ERROR_COLOR, message);
     }
+
+
 
 }

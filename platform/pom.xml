@@ -47,11 +47,6 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>commons-collections</groupId>
-                <artifactId>commons-collections</artifactId>
-                <version>${commons-collections.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
                 <version>${commons-io.version}</version>
@@ -68,7 +63,7 @@
             </dependency>
             <dependency>
                 <groupId>ddf.platform</groupId>
-                <artifactId>platform-configuration-migration</artifactId>
+                <artifactId>platform-configuration-listener</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -304,7 +299,7 @@
     <modules>
         <module>util</module>
         <module>platform-configuration</module>
-        <module>platform-configuration-migration</module>
+        <module>platform-configuration-listener</module>
         <module>parser</module>
         <module>action</module>
         <module>compression</module>

@@ -25,11 +25,7 @@ define([
 
         var SystemUsageModal = Modal.extend({
             template: 'systemUsageTemplate',
-            model: new Backbone.Model(properties),
-            initialize: function () {
-                // there is no automatic chaining of initialize.
-                Modal.prototype.initialize.apply(this, arguments);
-            }
+            model: new Backbone.Model(properties)
         });
         return SystemUsageModal;
     });
