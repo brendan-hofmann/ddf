@@ -58,17 +58,13 @@ public class ProductCacheDirListener<K, V> implements EntryListener<K, V>, Hazel
      * @param maxDirSizeBytes: If 0, no size limit will be enforced.
      */
     public ProductCacheDirListener(final long maxDirSizeBytes) {
-        synchronized (this) {
-            this.maxDirSizeBytes = maxDirSizeBytes;
-        }
+        this.maxDirSizeBytes = maxDirSizeBytes;
     }
 
     @Override
     public void setHazelcastInstance(HazelcastInstance hc) {
         logger.debug("Setting hazelcast instance");
-        synchronized (this) {
-            this.map = hc.getMap(PRODUCT_CACHE_NAME);
-        }
+        this.map = hc.getMap(PRODUCT_CACHE_NAME);
         this.cacheDirSize = hc.getAtomicLong(CACHE_DIR_SIZE);
     }
 
@@ -148,11 +144,11 @@ public class ProductCacheDirListener<K, V> implements EntryListener<K, V>, Hazel
         cacheDirSize.addAndGet(-rr.getSize());
     }
 
-    public synchronized long getMaxDirSizeBytes() {
+    public long getMaxDirSizeBytes() {
         return maxDirSizeBytes;
     }
 
-    public synchronized void setMaxDirSizeBytes(long maxDirSizeBytes) {
+    public void setMaxDirSizeBytes(long maxDirSizeBytes) {
         this.maxDirSizeBytes = maxDirSizeBytes;
     }
 

@@ -20,7 +20,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -713,9 +712,7 @@ public class MetricsEndpoint {
      * Comparator used to sort metric time ranges by chronological order rather than the default
      * lexigraphical order.
      */
-    static class MetricsTimeRangeComparator implements Comparator, Serializable {
-        private static final long serialVersionUID = 1L;
-
+    static class MetricsTimeRangeComparator implements Comparator {
         public int compare(Object o1, Object o2) {
             String timeRange1 = (String) o1;
             String timeRange2 = (String) o2;

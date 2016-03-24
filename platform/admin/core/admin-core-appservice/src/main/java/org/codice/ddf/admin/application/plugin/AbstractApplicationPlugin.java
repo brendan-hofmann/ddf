@@ -113,14 +113,4 @@ public class AbstractApplicationPlugin implements ApplicationPlugin {
             this.addAssociations(appAssocation);
         }
     }
-
-    protected void setIframeLocation(URI iframeLocation) {
-        this.iframeLocation = iframeLocation;
-    }
-
-    protected void setDisplayName(String displayName) {
-        this.displayName = displayName;
-    }
-
-
 }

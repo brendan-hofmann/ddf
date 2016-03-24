@@ -39,6 +39,7 @@ import com.vividsolutions.jts.io.WKTWriter;
 
 import ddf.catalog.data.Metacard;
 import ddf.catalog.data.MetacardType;
+
 import net.opengis.filter.v_1_1_0.ComparisonOperatorType;
 import net.opengis.filter.v_1_1_0.ComparisonOperatorsType;
 import net.opengis.filter.v_1_1_0.FilterCapabilities;
@@ -116,7 +117,7 @@ public class CswFilterDelegate extends CswAbstractFilterDelegate<FilterType> {
     @Override
     public FilterType or(List<FilterType> filters) {
         areLogicalOperationsSupported();
-        if (filters.contains(null)) {
+        if (filters.contains(Collections.singleton(null))) {
             throw new UnsupportedOperationException("Invalid filters found in list of filters!");
         }
         return cswFilterFactory.buildOrFilter(filters);
