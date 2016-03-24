@@ -408,7 +408,7 @@ public class ContentEndpoint {
                     responseBuilder = Response
                             .ok(byteArrayInputStream, createResponse.getCreatedMetadataMimeType());
                 } else {
-                    responseBuilder = Response.ok();
+                    responseBuilder = Response.ok("{}");
                 }
 
                 // If content was stored in content repository, i.e., STORE or STORE_AND_PROCESS,
@@ -640,7 +640,7 @@ public class ContentEndpoint {
         }
     }
 
-    protected class CreateInfo {
+    protected static class CreateInfo {
         InputStream stream = null;
 
         String filename = null;

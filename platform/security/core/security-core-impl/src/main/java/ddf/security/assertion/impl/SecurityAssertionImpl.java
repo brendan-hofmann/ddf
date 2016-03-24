@@ -1,10 +1,10 @@
 /**
  * Copyright (c) Codice Foundation
- * <p>
+ * <p/>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
@@ -24,6 +24,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.security.auth.kerberos.KerberosPrincipal;
 import javax.security.auth.x500.X500Principal;
 import javax.xml.bind.DatatypeConverter;
@@ -37,31 +39,32 @@ import org.apache.cxf.staxutils.StaxUtils;
 import org.apache.cxf.ws.security.tokenstore.SecurityToken;
 import org.apache.karaf.jaas.boot.principal.RolePrincipal;
 import org.apache.wss4j.common.saml.builder.SAML2Constants;
+import org.codice.ddf.platform.util.DateUtils;
 import org.joda.time.DateTime;
-import org.opensaml.saml2.core.Attribute;
-import org.opensaml.saml2.core.AttributeStatement;
-import org.opensaml.saml2.core.AttributeValue;
-import org.opensaml.saml2.core.AuthenticatingAuthority;
-import org.opensaml.saml2.core.AuthnContext;
-import org.opensaml.saml2.core.AuthnContextClassRef;
-import org.opensaml.saml2.core.AuthnContextDecl;
-import org.opensaml.saml2.core.AuthnContextDeclRef;
-import org.opensaml.saml2.core.AuthnStatement;
-import org.opensaml.saml2.core.AuthzDecisionStatement;
-import org.opensaml.saml2.core.Conditions;
-import org.opensaml.saml2.core.EncryptedAttribute;
-import org.opensaml.saml2.core.Issuer;
-import org.opensaml.saml2.core.NameID;
-import org.opensaml.saml2.core.SubjectLocality;
-import org.opensaml.xml.Namespace;
-import org.opensaml.xml.NamespaceManager;
-import org.opensaml.xml.XMLObject;
-import org.opensaml.xml.schema.XSBooleanValue;
-import org.opensaml.xml.schema.XSString;
-import org.opensaml.xml.util.AttributeMap;
-import org.opensaml.xml.util.IDIndex;
-import org.opensaml.xml.validation.ValidationException;
-import org.opensaml.xml.validation.Validator;
+import org.opensaml.core.xml.Namespace;
+import org.opensaml.core.xml.NamespaceManager;
+import org.opensaml.core.xml.XMLObject;
+import org.opensaml.core.xml.schema.XSBooleanValue;
+import org.opensaml.core.xml.schema.XSString;
+import org.opensaml.core.xml.util.AttributeMap;
+import org.opensaml.core.xml.util.IDIndex;
+import org.opensaml.saml.saml2.core.Assertion;
+import org.opensaml.saml.saml2.core.Attribute;
+import org.opensaml.saml.saml2.core.AttributeStatement;
+import org.opensaml.saml.saml2.core.AttributeValue;
+import org.opensaml.saml.saml2.core.AuthenticatingAuthority;
+import org.opensaml.saml.saml2.core.AuthnContext;
+import org.opensaml.saml.saml2.core.AuthnContextClassRef;
+import org.opensaml.saml.saml2.core.AuthnContextDecl;
+import org.opensaml.saml.saml2.core.AuthnContextDeclRef;
+import org.opensaml.saml.saml2.core.AuthnStatement;
+import org.opensaml.saml.saml2.core.AuthzDecisionStatement;
+import org.opensaml.saml.saml2.core.Conditions;
+import org.opensaml.saml.saml2.core.EncryptedAttribute;
+import org.opensaml.saml.saml2.core.Issuer;
+import org.opensaml.saml.saml2.core.NameID;
+import org.opensaml.saml.saml2.core.SubjectConfirmation;
+import org.opensaml.saml.saml2.core.SubjectLocality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
@@ -69,6 +72,7 @@ import org.w3c.dom.Element;
 import ddf.security.SecurityConstants;
 import ddf.security.assertion.SecurityAssertion;
 import ddf.security.principal.GuestPrincipal;
+import net.shibboleth.utilities.java.support.collection.LockableClassToInstanceMultiMap;
 
 /**
  * Implementation of the SecurityAssertion interface. This class wraps a SecurityToken.
@@ -118,9 +122,13 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
     private transient List<AuthnStatement> authenticationStatements;
 
+    private transient List<String> subjectConfirmations;
+
     private Date notBefore;
 
     private Date notOnOrAfter;
+
+    private String tokenType;
 
     /**
      * Uninitialized Constructor
@@ -132,10 +140,10 @@ public class SecurityAssertionImpl implements SecurityAssertion {
     /**
      * Constructor without usernameAttributeList
      *
-     * @param securityToken
+     * @param securityToken - token to wrap
      */
     public SecurityAssertionImpl(SecurityToken securityToken) {
-        this(securityToken, new ArrayList<String>());
+        this(securityToken, new ArrayList<>());
     }
 
     /**
@@ -166,6 +174,7 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         attributeStatements = new ArrayList<>();
         authenticationStatements = new ArrayList<>();
         usernameAttributeList = new ArrayList<>();
+        subjectConfirmations = new ArrayList<>();
     }
 
     /**
@@ -217,11 +226,13 @@ public class SecurityAssertionImpl implements SecurityAssertion {
                         if (authenticationStatement != null) {
                             String classValue = xmlStreamReader.getText();
                             classValue = classValue.trim();
-                            AuthenticationContextClassRef authenticationContextClassRef = new AuthenticationContextClassRef();
+                            AuthenticationContextClassRef authenticationContextClassRef =
+                                    new AuthenticationContextClassRef();
                             authenticationContextClassRef.setAuthnContextClassRef(classValue);
-                            AuthenticationContext authenticationContext = new AuthenticationContext();
-                            authenticationContext
-                                    .setAuthnContextClassRef(authenticationContextClassRef);
+                            AuthenticationContext authenticationContext =
+                                    new AuthenticationContext();
+                            authenticationContext.setAuthnContextClassRef(
+                                    authenticationContextClassRef);
                             authenticationStatement.setAuthnContext(authenticationContext);
                         }
                         break;
@@ -257,12 +268,36 @@ public class SecurityAssertionImpl implements SecurityAssertion {
                             String name = xmlStreamReader.getAttributeLocalName(i);
                             String value = xmlStreamReader.getAttributeValue(i);
                             if (Conditions.NOT_BEFORE_ATTRIB_NAME.equals(name)) {
-                                notBefore = DatatypeConverter.parseDateTime(value).getTime();
+                                notBefore = DatatypeConverter.parseDateTime(value)
+                                        .getTime();
                             } else if (Conditions.NOT_ON_OR_AFTER_ATTRIB_NAME.equals(name)) {
-                                notOnOrAfter = DatatypeConverter.parseDateTime(value).getTime();
+                                notOnOrAfter = DatatypeConverter.parseDateTime(value)
+                                        .getTime();
                             }
                         }
                         break;
+                    case SubjectConfirmation.DEFAULT_ELEMENT_LOCAL_NAME:
+                        attrs = xmlStreamReader.getAttributeCount();
+                        for (int i = 0; i < attrs; i++) {
+                            String name = xmlStreamReader.getAttributeLocalName(i);
+                            String value = xmlStreamReader.getAttributeValue(i);
+                            if (SubjectConfirmation.METHOD_ATTRIB_NAME.equals(name)) {
+                                subjectConfirmations.add(value);
+                            }
+                        }
+                    case Assertion.DEFAULT_ELEMENT_LOCAL_NAME:
+                        attrs = xmlStreamReader.getAttributeCount();
+                        for (int i = 0; i < attrs; i++) {
+                            String name = xmlStreamReader.getAttributeLocalName(i);
+                            String value = xmlStreamReader.getAttributeValue(i);
+                            if (Assertion.VERSION_ATTRIB_NAME.equals(name)) {
+                                if ("2.0".equals(value)) {
+                                    tokenType = "http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV2.0";
+                                } else if ("1.1".equals(value)) {
+                                    tokenType = "http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV1.1";
+                                }
+                            }
+                        }
                     }
                     break;
                 }
@@ -274,6 +309,8 @@ public class SecurityAssertionImpl implements SecurityAssertion {
                         break;
                     case Attribute.DEFAULT_ELEMENT_LOCAL_NAME:
                         attribute = null;
+                        break;
+                    default:
                         break;
                     }
                     break;
@@ -299,14 +336,15 @@ public class SecurityAssertionImpl implements SecurityAssertion {
     @Override
     public Principal getPrincipal() {
         if (securityToken != null) {
-            if (principal == null || !principal.getName().equals(name)) {
+            if (principal == null || !principal.getName()
+                    .equals(name)) {
                 String authMethod = null;
                 if (authenticationStatements != null) {
                     for (AuthnStatement authnStatement : authenticationStatements) {
                         AuthnContext authnContext = authnStatement.getAuthnContext();
                         if (authnContext != null) {
-                            AuthnContextClassRef authnContextClassRef = authnContext
-                                    .getAuthnContextClassRef();
+                            AuthnContextClassRef authnContextClassRef =
+                                    authnContext.getAuthnContextClassRef();
                             if (authnContextClassRef != null) {
                                 authMethod = authnContextClassRef.getAuthnContextClassRef();
                             }
@@ -321,7 +359,8 @@ public class SecurityAssertionImpl implements SecurityAssertion {
                     principal = new X500Principal(name);
                 } else if (SAML2Constants.AUTH_CONTEXT_CLASS_REF_KERBEROS.equals(authMethod)) {
                     principal = new KerberosPrincipal(name);
-                } else if (principal instanceof GuestPrincipal || name.startsWith(GuestPrincipal.GUEST_NAME_PREFIX)) {
+                } else if (principal instanceof GuestPrincipal
+                        || name.startsWith(GuestPrincipal.GUEST_NAME_PREFIX)) {
                     principal = new GuestPrincipal(name);
                 } else {
                     principal = new AssertionPrincipal(name);
@@ -381,6 +420,16 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         return new ArrayList<>();
     }
 
+    @Override
+    public List<String> getSubjectConfirmations() {
+        return Collections.unmodifiableList(subjectConfirmations);
+    }
+
+    @Override
+    public String getTokenType() {
+        return tokenType;
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -397,18 +446,18 @@ public class SecurityAssertionImpl implements SecurityAssertion {
      */
     private void identifyNameIDFormat() {
         if (!((StringUtils.containsIgnoreCase(nameIDFormat, SAML2Constants.NAMEID_FORMAT_PERSISTENT)
-                || StringUtils
-                .containsIgnoreCase(nameIDFormat, SAML2Constants.NAMEID_FORMAT_X509_SUBJECT_NAME)
-                || StringUtils
-                .containsIgnoreCase(nameIDFormat, SAML2Constants.NAMEID_FORMAT_KERBEROS)
-                || StringUtils
-                .containsIgnoreCase(nameIDFormat, SAML2Constants.NAMEID_FORMAT_UNSPECIFIED))
-                && !name.equals(""))) {
+                || StringUtils.containsIgnoreCase(nameIDFormat,
+                SAML2Constants.NAMEID_FORMAT_X509_SUBJECT_NAME) || StringUtils.containsIgnoreCase(
+                nameIDFormat,
+                SAML2Constants.NAMEID_FORMAT_KERBEROS) || StringUtils.containsIgnoreCase(
+                nameIDFormat,
+                SAML2Constants.NAMEID_FORMAT_UNSPECIFIED)) && !name.equals(""))) {
             for (AttributeStatement attributeStatementList : getAttributeStatements()) {
                 List<Attribute> attributeList = attributeStatementList.getAttributes();
                 for (Attribute attribute : attributeList) {
                     if (listContainsIgnoreCase(usernameAttributeList, attribute.getName())) {
-                        name = ((XMLString) attribute.getAttributeValues().get(0)).getValue();
+                        name = ((XMLString) attribute.getAttributeValues()
+                                .get(0)).getValue();
                         return;
                     }
                 }
@@ -427,12 +476,12 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
     @Override
     public Date getNotBefore() {
-        return notBefore;
+        return DateUtils.copy(notBefore);
     }
 
     @Override
     public Date getNotOnOrAfter() {
-        return notOnOrAfter;
+        return DateUtils.copy(notOnOrAfter);
     }
 
     /*
@@ -443,14 +492,18 @@ public class SecurityAssertionImpl implements SecurityAssertion {
     @Override
     public String toString() {
         StringBuilder result = new StringBuilder();
-        result.append("Principal: " + getPrincipal() + ", Attributes: ");
+        result.append("Principal: ");
+        result.append(getPrincipal());
+        result.append(", Attributes: ");
         for (AttributeStatement attributeStatement : getAttributeStatements()) {
             for (Attribute attr : attributeStatement.getAttributes()) {
                 result.append("[ ");
                 result.append(attr.getName());
                 result.append(" : ");
-                for (int i = 0; i < attr.getAttributeValues().size(); i++) {
-                    result.append(((XSString) attr.getAttributeValues().get(i)).getValue());
+                for (int i = 0; i < attr.getAttributeValues()
+                        .size(); i++) {
+                    result.append(((XSString) attr.getAttributeValues()
+                            .get(i)).getValue());
                 }
                 result.append("] ");
             }
@@ -459,8 +512,10 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         result.append(", AuthnStatements: ");
         for (AuthnStatement authStatement : getAuthnStatements()) {
             result.append("[ ");
-            result.append(authStatement.getAuthnInstant() + " : ");
-            result.append(authStatement.getAuthnContext().getAuthnContextClassRef()
+            result.append(authStatement.getAuthnInstant());
+            result.append(" : ");
+            result.append(authStatement.getAuthnContext()
+                    .getAuthnContextClassRef()
                     .getAuthnContextClassRef());
             result.append("] ");
         }
@@ -473,27 +528,38 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         return result.toString();
     }
 
-    /**
-     * Represents the String values parsed out of the SAML assertion.
-     * This class only has the value field implemented for performance reasons.
-     */
-    private static class XMLString implements XSString {
-        private String value;
+    @Override
+    public boolean isPresentlyValid() {
+        Date now = new Date();
 
-        protected XMLString() {
+        if (getNotBefore() != null && now.before(getNotBefore())) {
+            LOGGER.debug("SAML Assertion Time Bound Check Failed.");
+            LOGGER.debug("\t Checked time of {} is before the NotBefore time of {}",
+                    now,
+                    getNotBefore());
+            return false;
         }
 
-        public String getValue() {
-            return value;
+        if (getNotOnOrAfter() != null && (now.equals(getNotOnOrAfter())
+                || now.after(getNotOnOrAfter()))) {
+            LOGGER.debug("SAML Assertion Time Bound Check Failed.");
+            LOGGER.debug("\t Checked time of {} is equal to or after the NotOnOrAfter time of {}",
+                    now,
+                    getNotOnOrAfter());
+            return false;
         }
 
-        public void setValue(String newValue) {
-            value = newValue;
-        }
+        return true;
+    }
 
-        @Override
-        public void addNamespace(Namespace namespace) {
+    private static  class AbstractXmlObject implements XMLObject {
+        private IDIndex idIndex;
 
+        private NamespaceManager nsManager;
+
+        public AbstractXmlObject() {
+            nsManager = new NamespaceManager(this);
+            idIndex = new IDIndex(this);
         }
 
         @Override
@@ -501,70 +567,61 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
         }
 
+        @Nullable
         @Override
         public Element getDOM() {
             return null;
         }
 
-        @Override
-        public void setDOM(Element dom) {
-
-        }
-
+        @Nonnull
         @Override
         public QName getElementQName() {
-            return null;
+            return new QName("", "");
         }
 
+        @Nonnull
         @Override
         public IDIndex getIDIndex() {
-            return null;
+            return idIndex;
         }
 
+        @Nonnull
         @Override
         public NamespaceManager getNamespaceManager() {
-            return null;
+            return nsManager;
         }
 
+        @Nonnull
         @Override
         public Set<Namespace> getNamespaces() {
-            return null;
+            return Collections.EMPTY_SET;
         }
 
+        @Nullable
         @Override
         public String getNoNamespaceSchemaLocation() {
             return null;
         }
 
+        @Nullable
         @Override
-        public void setNoNamespaceSchemaLocation(String location) {
-
-        }
-
         public List<XMLObject> getOrderedChildren() {
             return null;
         }
 
+        @Nullable
         @Override
         public XMLObject getParent() {
             return null;
         }
 
-        @Override
-        public void setParent(XMLObject parent) {
-
-        }
-
+        @Nullable
         @Override
         public String getSchemaLocation() {
             return null;
         }
 
-        @Override
-        public void setSchemaLocation(String location) {
-
-        }
-
+        @Nullable
         @Override
         public QName getSchemaType() {
             return null;
@@ -581,7 +638,7 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         }
 
         @Override
-        public void releaseChildrenDOM(boolean propagateRelease) {
+        public void releaseChildrenDOM(boolean b) {
 
         }
 
@@ -591,63 +648,86 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         }
 
         @Override
-        public void releaseParentDOM(boolean propagateRelease) {
+        public void releaseParentDOM(boolean b) {
 
         }
 
+        @Nullable
         @Override
-        public void removeNamespace(Namespace namespace) {
-
+        public XMLObject resolveID(@Nonnull String s) {
+            return null;
         }
 
+        @Nullable
         @Override
-        public XMLObject resolveID(String id) {
+        public XMLObject resolveIDFromRoot(@Nonnull String s) {
             return null;
         }
 
         @Override
-        public XMLObject resolveIDFromRoot(String id) {
-            return null;
+        public void setDOM(@Nullable Element element) {
+
         }
 
+        @Override
+        public void setNoNamespaceSchemaLocation(@Nullable String s) {
+
+        }
+
+        @Override
+        public void setParent(@Nullable XMLObject xmlObject) {
+
+        }
+
+        @Override
+        public void setSchemaLocation(@Nullable String s) {
+
+        }
+
+        @Nullable
         @Override
         public Boolean isNil() {
-            return false;
+            return null;
         }
 
+        @Nullable
         @Override
         public XSBooleanValue isNilXSBoolean() {
-            return new XSBooleanValue();
-        }
-
-        @Override
-        public void setNil(Boolean newNil) {
-
-        }
-
-        @Override
-        public void setNil(XSBooleanValue newNil) {
-
-        }
-
-        @Override
-        public List<Validator> getValidators() {
             return null;
         }
 
         @Override
-        public void registerValidator(Validator validator) {
+        public void setNil(@Nullable Boolean aBoolean) {
 
         }
 
         @Override
-        public void deregisterValidator(Validator validator) {
+        public void setNil(@Nullable XSBooleanValue xsBooleanValue) {
 
         }
 
+        @Nonnull
         @Override
-        public void validate(boolean validateDescendants) throws ValidationException {
+        public LockableClassToInstanceMultiMap<Object> getObjectMetadata() {
+            return new LockableClassToInstanceMultiMap<>();
+        }
+    }
+    /**
+     * Represents the String values parsed out of the SAML assertion.
+     * This class only has the value field implemented for performance reasons.
+     */
+    private static class XMLString extends AbstractXmlObject implements XSString {
+        private String value;
 
+        protected XMLString() {
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String newValue) {
+            value = newValue;
         }
     }
 
@@ -655,7 +735,7 @@ public class SecurityAssertionImpl implements SecurityAssertion {
      * This class represents an attribute that has been specified in the SAML assertion.
      * Only the required minimum methods are implemented for performance reasons.
      */
-    private static class Attr implements Attribute {
+    private static class Attr extends AbstractXmlObject implements Attribute {
 
         private String name;
 
@@ -665,7 +745,10 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
         private List<XMLObject> attributeValues = new ArrayList<>();
 
+        private AttributeMap unknownAttributes;
+
         protected Attr() {
+            unknownAttributes = new AttributeMap(this);
         }
 
         @Override
@@ -709,167 +792,7 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
         @Override
         public AttributeMap getUnknownAttributes() {
-            return null;
-        }
-
-        @Override
-        public void addNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public void detach() {
-
-        }
-
-        @Override
-        public Element getDOM() {
-            return null;
-        }
-
-        @Override
-        public void setDOM(Element dom) {
-
-        }
-
-        @Override
-        public QName getElementQName() {
-            return null;
-        }
-
-        @Override
-        public IDIndex getIDIndex() {
-            return null;
-        }
-
-        @Override
-        public NamespaceManager getNamespaceManager() {
-            return null;
-        }
-
-        @Override
-        public Set<Namespace> getNamespaces() {
-            return null;
-        }
-
-        @Override
-        public String getNoNamespaceSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setNoNamespaceSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public List<XMLObject> getOrderedChildren() {
-            return null;
-        }
-
-        @Override
-        public XMLObject getParent() {
-            return null;
-        }
-
-        @Override
-        public void setParent(XMLObject parent) {
-
-        }
-
-        @Override
-        public String getSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public QName getSchemaType() {
-            return null;
-        }
-
-        @Override
-        public boolean hasChildren() {
-            return false;
-        }
-
-        @Override
-        public boolean hasParent() {
-            return false;
-        }
-
-        @Override
-        public void releaseChildrenDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void releaseDOM() {
-
-        }
-
-        @Override
-        public void releaseParentDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void removeNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public XMLObject resolveID(String id) {
-            return null;
-        }
-
-        @Override
-        public XMLObject resolveIDFromRoot(String id) {
-            return null;
-        }
-
-        @Override
-        public Boolean isNil() {
-            return false;
-        }
-
-        @Override
-        public XSBooleanValue isNilXSBoolean() {
-            return new XSBooleanValue();
-        }
-
-        @Override
-        public void setNil(Boolean newNil) {
-
-        }
-
-        @Override
-        public void setNil(XSBooleanValue newNil) {
-
-        }
-
-        @Override
-        public List<Validator> getValidators() {
-            return null;
-        }
-
-        @Override
-        public void registerValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void deregisterValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void validate(boolean validateDescendants) throws ValidationException {
-
+            return unknownAttributes;
         }
     }
 
@@ -877,7 +800,7 @@ public class SecurityAssertionImpl implements SecurityAssertion {
      * This class represents an attribute statement within a SAML assertion.
      * Only the required minimum methods are implemented for performance reasons.
      */
-    private static class AttrStatement implements AttributeStatement {
+    private static class AttrStatement extends AbstractXmlObject implements AttributeStatement {
 
         private List<Attribute> attributes = new ArrayList<>();
 
@@ -903,171 +826,13 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         private void addEncryptedAttribute(EncryptedAttribute attribute) {
             encryptedAttributes.add(attribute);
         }
-
-        @Override
-        public void addNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public void detach() {
-
-        }
-
-        @Override
-        public Element getDOM() {
-            return null;
-        }
-
-        @Override
-        public void setDOM(Element dom) {
-
-        }
-
-        @Override
-        public QName getElementQName() {
-            return null;
-        }
-
-        @Override
-        public IDIndex getIDIndex() {
-            return null;
-        }
-
-        @Override
-        public NamespaceManager getNamespaceManager() {
-            return null;
-        }
-
-        @Override
-        public Set<Namespace> getNamespaces() {
-            return null;
-        }
-
-        @Override
-        public String getNoNamespaceSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setNoNamespaceSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public List<XMLObject> getOrderedChildren() {
-            return null;
-        }
-
-        @Override
-        public XMLObject getParent() {
-            return null;
-        }
-
-        @Override
-        public void setParent(XMLObject parent) {
-
-        }
-
-        @Override
-        public String getSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public QName getSchemaType() {
-            return null;
-        }
-
-        @Override
-        public boolean hasChildren() {
-            return attributes.size() > 0;
-        }
-
-        @Override
-        public boolean hasParent() {
-            return false;
-        }
-
-        @Override
-        public void releaseChildrenDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void releaseDOM() {
-
-        }
-
-        @Override
-        public void releaseParentDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void removeNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public XMLObject resolveID(String id) {
-            return null;
-        }
-
-        @Override
-        public XMLObject resolveIDFromRoot(String id) {
-            return null;
-        }
-
-        @Override
-        public Boolean isNil() {
-            return false;
-        }
-
-        @Override
-        public XSBooleanValue isNilXSBoolean() {
-            return new XSBooleanValue();
-        }
-
-        @Override
-        public void setNil(Boolean newNil) {
-
-        }
-
-        @Override
-        public void setNil(XSBooleanValue newNil) {
-
-        }
-
-        @Override
-        public List<Validator> getValidators() {
-            return null;
-        }
-
-        @Override
-        public void registerValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void deregisterValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void validate(boolean validateDescendants) throws ValidationException {
-
-        }
     }
 
-    private static class AuthenticationContextClassRef implements AuthnContextClassRef {
+    private static class AuthenticationContextClassRef extends AbstractXmlObject implements AuthnContextClassRef {
 
         String authnContextClassRef;
+
+        Boolean isNil;
 
         @Override
         public String getAuthnContextClassRef() {
@@ -1080,169 +845,21 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         }
 
         @Override
-        public List<Validator> getValidators() {
-            return null;
-        }
-
-        @Override
-        public void registerValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void deregisterValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void validate(boolean validateDescendants) throws ValidationException {
-
-        }
-
-        @Override
-        public void addNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public void detach() {
-
-        }
-
-        @Override
-        public Element getDOM() {
-            return null;
-        }
-
-        @Override
-        public void setDOM(Element dom) {
-
-        }
-
-        @Override
-        public QName getElementQName() {
-            return null;
-        }
-
-        @Override
-        public IDIndex getIDIndex() {
-            return null;
-        }
-
-        @Override
-        public NamespaceManager getNamespaceManager() {
-            return null;
-        }
-
-        @Override
-        public Set<Namespace> getNamespaces() {
-            return null;
-        }
-
-        @Override
-        public String getNoNamespaceSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setNoNamespaceSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public List<XMLObject> getOrderedChildren() {
-            return null;
-        }
-
-        @Override
-        public XMLObject getParent() {
-            return null;
-        }
-
-        @Override
-        public void setParent(XMLObject parent) {
-
-        }
-
-        @Override
-        public String getSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public QName getSchemaType() {
-            return null;
-        }
-
-        @Override
-        public boolean hasChildren() {
-            return false;
-        }
-
-        @Override
-        public boolean hasParent() {
-            return false;
-        }
-
-        @Override
-        public void releaseChildrenDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void releaseDOM() {
-
-        }
-
-        @Override
-        public void releaseParentDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void removeNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public XMLObject resolveID(String id) {
-            return null;
-        }
-
-        @Override
-        public XMLObject resolveIDFromRoot(String id) {
-            return null;
-        }
-
-        @Override
         public Boolean isNil() {
-            return null;
-        }
-
-        @Override
-        public XSBooleanValue isNilXSBoolean() {
-            return null;
+            return isNil;
         }
 
         @Override
         public void setNil(Boolean newNil) {
-
-        }
-
-        @Override
-        public void setNil(XSBooleanValue newNil) {
-
+            isNil = newNil;
         }
     }
 
-    private static class AuthenticationContext implements AuthnContext {
+    private static class AuthenticationContext extends AbstractXmlObject implements AuthnContext {
 
         AuthnContextClassRef authnContextClassRef;
+
+        boolean isNil;
 
         @Override
         public AuthnContextClassRef getAuthnContextClassRef() {
@@ -1280,173 +897,25 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         }
 
         @Override
-        public List<Validator> getValidators() {
-            return null;
-        }
-
-        @Override
-        public void registerValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void deregisterValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void validate(boolean validateDescendants) throws ValidationException {
-
-        }
-
-        @Override
-        public void addNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public void detach() {
-
-        }
-
-        @Override
-        public Element getDOM() {
-            return null;
-        }
-
-        @Override
-        public void setDOM(Element dom) {
-
-        }
-
-        @Override
-        public QName getElementQName() {
-            return null;
-        }
-
-        @Override
-        public IDIndex getIDIndex() {
-            return null;
-        }
-
-        @Override
-        public NamespaceManager getNamespaceManager() {
-            return null;
-        }
-
-        @Override
-        public Set<Namespace> getNamespaces() {
-            return null;
-        }
-
-        @Override
-        public String getNoNamespaceSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setNoNamespaceSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public List<XMLObject> getOrderedChildren() {
-            return null;
-        }
-
-        @Override
-        public XMLObject getParent() {
-            return null;
-        }
-
-        @Override
-        public void setParent(XMLObject parent) {
-
-        }
-
-        @Override
-        public String getSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public QName getSchemaType() {
-            return null;
-        }
-
-        @Override
-        public boolean hasChildren() {
-            return false;
-        }
-
-        @Override
-        public boolean hasParent() {
-            return false;
-        }
-
-        @Override
-        public void releaseChildrenDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void releaseDOM() {
-
-        }
-
-        @Override
-        public void releaseParentDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void removeNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public XMLObject resolveID(String id) {
-            return null;
-        }
-
-        @Override
-        public XMLObject resolveIDFromRoot(String id) {
-            return null;
-        }
-
-        @Override
         public Boolean isNil() {
-            return null;
-        }
-
-        @Override
-        public XSBooleanValue isNilXSBoolean() {
-            return null;
+            return isNil;
         }
 
         @Override
         public void setNil(Boolean newNil) {
-
-        }
-
-        @Override
-        public void setNil(XSBooleanValue newNil) {
-
+            isNil = newNil;
         }
     }
 
-    private static class AuthenticationStatement implements AuthnStatement {
+    private static class AuthenticationStatement extends AbstractXmlObject implements AuthnStatement {
 
         DateTime authnInstant;
 
         DateTime sessionNotOnOrAfter;
 
         AuthnContext authnContext;
+
+        boolean isNil;
 
         @Override
         public DateTime getAuthnInstant() {
@@ -1499,164 +968,15 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         }
 
         @Override
-        public List<Validator> getValidators() {
-            return null;
-        }
-
-        @Override
-        public void registerValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void deregisterValidator(Validator validator) {
-
-        }
-
-        @Override
-        public void validate(boolean validateDescendants) throws ValidationException {
-
-        }
-
-        @Override
-        public void addNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public void detach() {
-
-        }
-
-        @Override
-        public Element getDOM() {
-            return null;
-        }
-
-        @Override
-        public void setDOM(Element dom) {
-
-        }
-
-        @Override
-        public QName getElementQName() {
-            return null;
-        }
-
-        @Override
-        public IDIndex getIDIndex() {
-            return null;
-        }
-
-        @Override
-        public NamespaceManager getNamespaceManager() {
-            return null;
-        }
-
-        @Override
-        public Set<Namespace> getNamespaces() {
-            return null;
-        }
-
-        @Override
-        public String getNoNamespaceSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setNoNamespaceSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public List<XMLObject> getOrderedChildren() {
-            return null;
-        }
-
-        @Override
-        public XMLObject getParent() {
-            return null;
-        }
-
-        @Override
-        public void setParent(XMLObject parent) {
-
-        }
-
-        @Override
-        public String getSchemaLocation() {
-            return null;
-        }
-
-        @Override
-        public void setSchemaLocation(String location) {
-
-        }
-
-        @Override
-        public QName getSchemaType() {
-            return null;
-        }
-
-        @Override
-        public boolean hasChildren() {
-            return false;
-        }
-
-        @Override
-        public boolean hasParent() {
-            return false;
-        }
-
-        @Override
-        public void releaseChildrenDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void releaseDOM() {
-
-        }
-
-        @Override
-        public void releaseParentDOM(boolean propagateRelease) {
-
-        }
-
-        @Override
-        public void removeNamespace(Namespace namespace) {
-
-        }
-
-        @Override
-        public XMLObject resolveID(String id) {
-            return null;
-        }
-
-        @Override
-        public XMLObject resolveIDFromRoot(String id) {
-            return null;
-        }
-
-        @Override
         public Boolean isNil() {
-            return null;
-        }
-
-        @Override
-        public XSBooleanValue isNilXSBoolean() {
-            return null;
+            return isNil;
         }
 
         @Override
         public void setNil(Boolean newNil) {
-
+            isNil = newNil;
         }
 
-        @Override
-        public void setNil(XSBooleanValue newNil) {
-
-        }
     }
 
     /**
@@ -1689,7 +1009,8 @@ public class SecurityAssertionImpl implements SecurityAssertion {
             if (tmpPrin.getName() == null && getName() == null) {
                 return super.equals(another);
             }
-            return tmpPrin.getName().equals(getName());
+            return tmpPrin.getName()
+                    .equals(getName());
         }
 
         @Override
