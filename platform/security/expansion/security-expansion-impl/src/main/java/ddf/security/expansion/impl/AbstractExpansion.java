@@ -15,10 +15,8 @@ package ddf.security.expansion.impl;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,6 +28,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,6 +76,8 @@ public abstract class AbstractExpansion implements Expansion {
     protected Pattern rulePattern = Pattern.compile(RULE_SPLIT_REGEX); // ("\\[(.+)\\|(.*)\\]");
 
     protected Map<String, List<String[]>> expansionTable;
+
+    private String key;
 
     private String attributeSeparator = DEFAULT_VALUE_SEPARATOR;
 
@@ -444,6 +445,7 @@ public abstract class AbstractExpansion implements Expansion {
      *            the name of the file to be read and processed
      */
     protected void loadConfiguration(String filename) {
+        BufferedReader br = null;
 
         if (filename == null) {
             setExpansionMap(null);
@@ -454,22 +456,22 @@ public abstract class AbstractExpansion implements Expansion {
         if (expansionTable != null) {
             expansionTable.clear();
         }
-        File file = null;
-        filename = StringUtils.strip(filename);
-        if (!StringUtils.startsWith(filename, "/") && !StringUtils.startsWith(filename, "\\")) {
-            // relative path
-            String relPath = System.getProperty("ddf.home");
-            if (StringUtils.isBlank(relPath)) {
-                LOGGER.warn(
-                        "ddf.home property was not set or is NULL, loading of properties may be impacted.");
+        try {
+            File file = null;
+            filename = StringUtils.strip(filename);
+            if (!StringUtils.startsWith(filename, "/") && !StringUtils.startsWith(filename, "\\")) {
+                // relative path
+                String relPath = System.getProperty("ddf.home");
+                if (StringUtils.isBlank(relPath)) {
+                    LOGGER.warn(
+                            "ddf.home property was not set or is NULL, loading of properties may be impacted.");
+                }
+                file = new File(relPath, filename);
+            } else {
+                // absolute path
+                file = new File(filename);
             }
-            file = new File(relPath, filename);
-        } else {
-            // absolute path
-            file = new File(filename);
-        }
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file),
-                StandardCharsets.UTF_8.name()))) {
+            br = new BufferedReader(new FileReader(file));
             if (br != null) {
                 String line;
                 while ((line = br.readLine()) != null) {
@@ -488,10 +490,11 @@ public abstract class AbstractExpansion implements Expansion {
                 LOGGER.info("Finished loading mapping configuration file.");
             }
         } catch (IOException e) {
-            LOGGER.warn("Unexpected exception reading mapping configuration file {} - {}",
-                    filename,
+            LOGGER.warn("Unexpected exception reading mapping configuration file {} - {}", filename,
                     e.getMessage());
             setExpansionMap(null);
+        } finally {
+            IOUtils.closeQuietly(br);
         }
     }
 }

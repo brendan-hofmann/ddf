@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -231,8 +230,7 @@ public class CswRecordConverter implements Converter, MetacardTransformer, Input
 
         BinaryContent transformedContent = null;
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(stringWriter.toString().getBytes(
-                StandardCharsets.UTF_8));
+        ByteArrayInputStream bais = new ByteArrayInputStream(stringWriter.toString().getBytes());
         transformedContent = new BinaryContentImpl(bais, new MimeType());
         return transformedContent;
     }
@@ -244,8 +242,8 @@ public class CswRecordConverter implements Converter, MetacardTransformer, Input
             return;
         }
 
-        for (Map.Entry<String, Serializable> entry : arguments.entrySet()) {
-            context.put(entry.getKey(), entry.getValue());
+        for (String key : arguments.keySet()) {
+            context.put(key, arguments.get(key));
         }
     }
 

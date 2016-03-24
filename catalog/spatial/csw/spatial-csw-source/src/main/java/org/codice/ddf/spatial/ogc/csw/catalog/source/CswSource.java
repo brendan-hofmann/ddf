@@ -1,10 +1,10 @@
 /**
  * Copyright (c) Codice Foundation
- * <p/>
+ * <p>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
@@ -101,6 +101,7 @@ import ddf.catalog.util.impl.MaskableImpl;
 import ddf.security.SecurityConstants;
 import ddf.security.Subject;
 import ddf.security.service.SecurityManager;
+import ddf.security.service.SecurityServiceException;
 import net.opengis.cat.csw.v_2_0_2.CapabilitiesType;
 import net.opengis.cat.csw.v_2_0_2.ElementSetNameType;
 import net.opengis.cat.csw.v_2_0_2.ElementSetType;
@@ -249,7 +250,7 @@ public class CswSource extends MaskableImpl
 
     private boolean isConstraintCql;
 
-    protected SecureCxfClientFactory<Csw> factory;
+    private SecureCxfClientFactory factory;
 
     protected CswJAXBElementProvider<GetRecordsType> getRecordsTypeProvider;
 
@@ -305,26 +306,12 @@ public class CswSource extends MaskableImpl
 
     public void init() {
         LOGGER.debug("{}: Entering init()", cswSourceConfiguration.getId());
-        initClientFactory();
+        factory = new SecureCxfClientFactory(cswSourceConfiguration.getCswUrl(), Csw.class,
+                initProviders(cswTransformProvider, cswSourceConfiguration), null,
+                cswSourceConfiguration.getDisableCnCheck(),
+                cswSourceConfiguration.getConnectionTimeout(),
+                cswSourceConfiguration.getReceiveTimeout());
         setupAvailabilityPoll();
-    }
-
-    private void initClientFactory() {
-        if (StringUtils.isNotBlank(cswSourceConfiguration.getUsername()) && StringUtils
-                .isNotBlank(cswSourceConfiguration.getPassword())) {
-            factory = new SecureCxfClientFactory(cswSourceConfiguration.getCswUrl(), Csw.class,
-                    initProviders(cswTransformProvider, cswSourceConfiguration), null,
-                    cswSourceConfiguration.getDisableCnCheck(), false,
-                    cswSourceConfiguration.getConnectionTimeout(),
-                    cswSourceConfiguration.getReceiveTimeout(),
-                    cswSourceConfiguration.getUsername(), cswSourceConfiguration.getPassword());
-        } else {
-            factory = new SecureCxfClientFactory(cswSourceConfiguration.getCswUrl(), Csw.class,
-                    initProviders(cswTransformProvider, cswSourceConfiguration), null,
-                    cswSourceConfiguration.getDisableCnCheck(), false,
-                    cswSourceConfiguration.getConnectionTimeout(),
-                    cswSourceConfiguration.getReceiveTimeout());
-        }
     }
 
     /**
@@ -386,7 +373,7 @@ public class CswSource extends MaskableImpl
      * @param configuration The configuration with which to connect to the server
      */
 
-    public void refresh(Map<String, Object> configuration) {
+    public void refresh(Map<String, Object> configuration) throws SecurityServiceException {
         LOGGER.debug("{}: Entering refresh()", cswSourceConfiguration.getId());
 
         if (configuration == null || configuration.isEmpty()) {
@@ -446,7 +433,8 @@ public class CswSource extends MaskableImpl
             cswSourceConfiguration.setIdentifierMapping(identifierMapping);
         }
 
-        Boolean sslProp = (Boolean) configuration.get(DISABLE_CN_CHECK_PROPERTY);
+        Boolean sslProp = (Boolean) configuration
+                .get(DISABLE_CN_CHECK_PROPERTY);
         if (sslProp != null) {
             cswSourceConfiguration.setDisableCnCheck(sslProp);
         }
@@ -521,10 +509,13 @@ public class CswSource extends MaskableImpl
         if (StringUtils.isNotBlank(cswUrlProp) &&
                 !cswUrlProp.equals(cswSourceConfiguration.getCswUrl())) {
             cswSourceConfiguration.setCswUrl(cswUrlProp);
+            factory = new SecureCxfClientFactory(cswUrlProp, Csw.class,
+                    initProviders(cswTransformProvider, cswSourceConfiguration), null,
+                    cswSourceConfiguration.getDisableCnCheck(),
+                    cswSourceConfiguration.getConnectionTimeout(),
+                    cswSourceConfiguration.getReceiveTimeout());
         }
         configureCswSource();
-
-        initClientFactory();
     }
 
     protected void setupAvailabilityPoll() {
@@ -617,10 +608,15 @@ public class CswSource extends MaskableImpl
 
     @Override
     public SourceResponse query(QueryRequest queryRequest) throws UnsupportedQueryException {
-        Subject subject = (Subject) queryRequest
-                .getPropertyValue(SecurityConstants.SECURITY_SUBJECT);
-        Csw csw = factory.getClientForSubject(subject);
-        return query(queryRequest, ElementSetType.FULL, null, csw);
+        try {
+            Subject subject = (Subject) queryRequest
+                    .getPropertyValue(SecurityConstants.SECURITY_SUBJECT);
+            Csw csw = getClient(subject);
+            return query(queryRequest, ElementSetType.FULL, null, csw);
+        } catch (SecurityServiceException e) {
+            throw new UnsupportedQueryException("Could not get client for CSW Source: " + getId(),
+                    e);
+        }
     }
 
     protected SourceResponse query(QueryRequest queryRequest, ElementSetType elementSetName,
@@ -781,8 +777,7 @@ public class CswSource extends MaskableImpl
             }
         }
 
-        LOGGER.debug("{}: Setting CSW coordinate order to {}", cswSourceConfiguration.getId(),
-                cswAxisOrder);
+        LOGGER.debug("{}: Setting CSW coordinate order to {}", cswSourceConfiguration.getId(), cswAxisOrder);
         cswSourceConfiguration.setCswAxisOrder(cswAxisOrder);
     }
 
@@ -1079,9 +1074,9 @@ public class CswSource extends MaskableImpl
         return writer.toString();
     }
 
-    protected CapabilitiesType getCapabilities() {
+    protected CapabilitiesType getCapabilities() throws SecurityServiceException {
         CapabilitiesType caps = null;
-        Csw csw = factory.getClient();
+        Csw csw = getClient(null);
 
         try {
             LOGGER.debug("Doing getCapabilities() call for CSW");
@@ -1100,7 +1095,7 @@ public class CswSource extends MaskableImpl
         return caps;
     }
 
-    public void configureCswSource() {
+    public void configureCswSource() throws SecurityServiceException {
         detailLevels = EnumSet.noneOf(ElementSetType.class);
 
         capabilities = getCapabilities();
@@ -1415,18 +1410,44 @@ public class CswSource extends MaskableImpl
             LOGGER.debug("Checking availability for source {} ", cswSourceConfiguration.getId());
             boolean oldAvailability = CswSource.this.isAvailable();
             boolean newAvailability = false;
-            // Simple "ping" to ensure the source is responding
-            newAvailability = (getCapabilities() != null);
-            if (oldAvailability != newAvailability) {
-                availabilityChanged(newAvailability);
-                // If the source becomes available, configure it.
-                if (newAvailability) {
-                    configureCswSource();
+            try {
+                // Simple "ping" to ensure the source is responding
+                newAvailability = (getCapabilities() != null);
+                if (oldAvailability != newAvailability) {
+                    availabilityChanged(newAvailability);
+                    // If the source becomes available, configure it.
+                    if (newAvailability) {
+                        configureCswSource();
+                    }
                 }
+            } catch (SecurityServiceException sse) {
+                LOGGER.error("Could not get client for the endpointURL.", sse);
             }
             return newAvailability;
         }
 
+    }
+
+    /**
+     * Creates a new client using Basic Auth or a Security Subject. If it cannot, it
+     * will instead create an unsecure client, if possible.
+     *
+     * @param subj - the Security Subject
+     * @return a new Csw client
+     * @throws SecurityServiceException
+     */
+    protected Csw getClient(Subject subj) throws SecurityServiceException {
+        Csw csw;
+        String username = cswSourceConfiguration.getUsername();
+        String password = cswSourceConfiguration.getPassword();
+        if (StringUtils.isNotEmpty(username) && StringUtils.isNotEmpty(password)) {
+            csw = (Csw) factory.getClientForBasicAuth(username, password);
+        } else if (subj != null) {
+            csw = (Csw) factory.getClientForSubject(subj);
+        } else {
+            csw = (Csw) factory.getUnsecuredClient();
+        }
+        return csw;
     }
 
     /**

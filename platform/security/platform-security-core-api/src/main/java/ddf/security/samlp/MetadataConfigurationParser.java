@@ -33,8 +33,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.cxf.staxutils.StaxUtils;
 import org.apache.wss4j.common.ext.WSSecurityException;
 import org.apache.wss4j.common.saml.OpenSAMLUtil;
-import org.opensaml.core.xml.XMLObject;
-import org.opensaml.saml.saml2.metadata.EntityDescriptor;
+import org.opensaml.saml2.metadata.EntityDescriptor;
+import org.opensaml.xml.XMLObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -69,10 +69,6 @@ public class MetadataConfigurationParser {
     private final Map<String, EntityDescriptor> entityDescriptorMap = new ConcurrentHashMap<>();
 
     private final Consumer<EntityDescriptor> updateCallback;
-
-    static {
-        OpenSAMLUtil.initSamlEngine();
-    }
 
     public MetadataConfigurationParser(List<String> entityDescriptions) throws IOException {
         this(entityDescriptions, null);
