@@ -58,9 +58,10 @@
         <!-- Properties for the frontend-maven-plugin -->
         <node.version>v0.10.40</node.version>
         <npm.version>2.14.8</npm.version>
-        <camel.version>2.14.2</camel.version>
+        <camel.version>2.16.1</camel.version>
+        <commons-collections.version>3.2.2</commons-collections.version>
         <commons-io.version>2.1</commons-io.version>
-        <cxf.version>3.0.4</cxf.version>
+        <cxf.version>3.1.4</cxf.version>
         <cxf.xpp3.bundle.version>1.1.4c_6</cxf.xpp3.bundle.version>
         <jts.bundle.version>1.12_1</jts.bundle.version>
         <karaf.version>2.4.3</karaf.version>
@@ -77,6 +78,7 @@
         <antlr.version>4.3</antlr.version>
         <lux.woodstox.version>4.1.1</lux.woodstox.version>
         <guava.version>18.0</guava.version>
+        <findbugs.version>3.0.1</findbugs.version>
     </properties>
     <!--
     NOTE: The properties ddf.scm.connection.url, snapshots.repository.url and releases.repository.url should be defined
@@ -503,10 +505,10 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>findbugs-maven-plugin</artifactId>
-                <version>3.0.1</version>
+                <version>${findbugs.version}</version>
                 <configuration>
                     <effort>Max</effort>
-                    <threshold>Low</threshold>
+                    <threshold>High</threshold>
                     <xmlOutput>true</xmlOutput>
                     <xmlOutputDirectory>${project.build.directory}/findbugs</xmlOutputDirectory>
                 </configuration>
@@ -884,7 +886,7 @@
         <profile>
             <id>findbugs</id>
             <activation>
-                <activeByDefault>false</activeByDefault>
+                <activeByDefault>true</activeByDefault>
             </activation>
             <build>
                 <plugins>
@@ -919,7 +921,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>findbugs-maven-plugin</artifactId>
-                        <version>3.0.1</version>
+                        <version>${findbugs.version}</version>
                         <configuration>
                             <excludeFilterFile>
                                 ${project.build.directory}/target/classes/findbugs-exclude.xml
@@ -930,7 +932,7 @@
                                 <id>generate-findbugs</id>
                                 <phase>compile</phase>
                                 <goals>
-                                    <goal>findbugs</goal>
+                                    <goal>check</goal>
                                 </goals>
                             </execution>
                         </executions>
