@@ -1,10 +1,10 @@
 /**
  * Copyright (c) Codice Foundation
- * <p/>
+ * <p>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
@@ -20,15 +20,14 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.cxf.ws.security.tokenstore.SecurityToken;
-import org.opensaml.saml2.core.AttributeStatement;
-import org.opensaml.saml2.core.AuthnStatement;
-import org.opensaml.saml2.core.AuthzDecisionStatement;
+import org.opensaml.saml.saml2.core.AttributeStatement;
+import org.opensaml.saml.saml2.core.AuthnStatement;
+import org.opensaml.saml.saml2.core.AuthzDecisionStatement;
 
 /**
  * This class serves as a wrapper for a CXF SecurityToken
  *
  * @author tustisos
- *
  */
 public interface SecurityAssertion extends Serializable {
     /**
@@ -67,11 +66,26 @@ public interface SecurityAssertion extends Serializable {
     List<AuthzDecisionStatement> getAuthzDecisionStatements();
 
     /**
+     * Returns the list of subject confirmations contained in the SecurityToken
+     *
+     * @return List<String>
+     */
+    List<String> getSubjectConfirmations();
+
+    /**
      * Returns primary principal and all attributes as principals
      *
      * @return List<Principal>
      */
     Set<Principal> getPrincipals();
+
+    /**
+     * Returns the token type URI for this assertion
+     *
+     * @return either http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV2.0 or
+     * http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV1.1
+     */
+    String getTokenType();
 
     /**
      * Returns the underlying SecurityToken that this object wraps
@@ -100,4 +114,11 @@ public interface SecurityAssertion extends Serializable {
      * @return String
      */
     String toString();
+
+    /**
+     * Returns true if checked while within the time bounds defined by NotBefore and NotOnOrAfter
+     *
+     * @return boolean
+     */
+    boolean isPresentlyValid();
 }
