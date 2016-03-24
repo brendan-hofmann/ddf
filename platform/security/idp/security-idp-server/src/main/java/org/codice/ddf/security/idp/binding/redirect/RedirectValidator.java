@@ -21,13 +21,13 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 import org.codice.ddf.security.idp.binding.api.Validator;
 import org.codice.ddf.security.idp.binding.api.impl.ValidatorImpl;
-import org.opensaml.saml2.core.AuthnRequest;
-import org.opensaml.xml.validation.ValidationException;
+import org.opensaml.saml.saml2.core.AuthnRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ddf.security.samlp.SimpleSign;
 import ddf.security.samlp.SystemCrypto;
+import ddf.security.samlp.ValidationException;
 import ddf.security.samlp.impl.EntityInformation;
 
 public class RedirectValidator extends ValidatorImpl implements Validator {
@@ -94,13 +94,12 @@ public class RedirectValidator extends ValidatorImpl implements Validator {
 
     @Override
     public void validateRelayState(String relayState) {
-        if (relayState == null) {
-            throw new IllegalArgumentException("Missing RelayState on IdP request.");
-        }
-        try {
-            relayState = URLDecoder.decode(relayState, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Unable to URL decode relay state, it may already be decoded.", e);
+        if (relayState != null) {
+            try {
+                relayState = URLDecoder.decode(relayState, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                LOGGER.warn("Unable to URL decode relay state, it may already be decoded.", e);
+            }
         }
 
         super.validateRelayState(relayState);
