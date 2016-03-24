@@ -15,56 +15,52 @@
 
 package org.codice.ddf.spatial.ogc.wfs.catalog.common;
 
-import java.io.Serializable;
 import java.text.Collator;
 import java.util.Comparator;
 
 import ddf.catalog.data.AttributeDescriptor;
 
-public class AttributeDescriptorComparator implements Comparator<AttributeDescriptor>,
-        Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class AttributeDescriptorComparator implements Comparator<AttributeDescriptor> {
 
     @Override
     public int compare(AttributeDescriptor ad1, AttributeDescriptor ad2) {
         int compared = 0;
         compared = Collator.getInstance().compare(ad1.getName(), ad2.getName());
-        if (compared != 0) {
+        if (0 != compared) {
             return compared;
         }
         compared = ad1.getName().compareTo(ad2.getName());
-        if (compared != 0) {
+        if (0 != compared) {
             return compared;
         }
         compared = ad1.getType().getAttributeFormat().compareTo(ad2.getType().getAttributeFormat());
-        if (compared != 0) {
+        if (0 != compared) {
             return compared;
         }
 
         compared = ad1.getType().getBinding().toString()
                 .compareTo(ad2.getType().getBinding().toString());
-        if (compared != 0) {
+        if (0 != compared) {
             return compared;
         }
 
-        compared = Boolean.valueOf(ad1.isIndexed()).compareTo(Boolean.valueOf(ad2.isIndexed()));
-        if (compared != 0) {
+        compared = new Boolean(ad1.isIndexed()).compareTo(new Boolean(ad2.isIndexed()));
+        if (0 != compared) {
             return compared;
         }
 
-        compared = Boolean.valueOf(ad1.isStored()).compareTo(Boolean.valueOf(ad2.isStored()));
-        if (compared != 0) {
+        compared = new Boolean(ad1.isStored()).compareTo(new Boolean(ad2.isStored()));
+        if (0 != compared) {
             return compared;
         }
 
-        compared = Boolean.valueOf(ad1.isTokenized()).compareTo(Boolean.valueOf(ad2.isTokenized()));
-        if (compared != 0) {
+        compared = new Boolean(ad1.isTokenized()).compareTo(new Boolean(ad2.isTokenized()));
+        if (0 != compared) {
             return compared;
         }
 
-        compared = Boolean.valueOf(ad1.isMultiValued()).compareTo(Boolean.valueOf(ad2.isMultiValued()));
-        if (compared != 0) {
+        compared = new Boolean(ad1.isMultiValued()).compareTo(new Boolean(ad2.isMultiValued()));
+        if (0 != compared) {
             return compared;
         }
 

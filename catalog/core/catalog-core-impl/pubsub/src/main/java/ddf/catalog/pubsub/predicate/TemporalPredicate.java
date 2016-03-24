@@ -17,7 +17,6 @@ package ddf.catalog.pubsub.predicate;
 import java.util.Date;
 import java.util.Map;
 
-import org.codice.ddf.platform.util.DateUtils;
 import org.osgi.service.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,12 +50,8 @@ public class TemporalPredicate implements Predicate {
      *            What date
      */
     public TemporalPredicate(Date start, Date end, DateType type) {
-        if(end != null) {
-            this.end = new Date(end.getTime());
-        }
-        if(start != null) {
-            this.start = new Date(start.getTime());
-        }
+        this.end = end;
+        this.start = start;
         this.offset = 0;
         this.type = type;
     }
@@ -121,9 +116,6 @@ public class TemporalPredicate implements Predicate {
                 LOGGER.debug("search by expiration: {}", entry.getExpirationDate());
                 date = entry.getExpirationDate();
                 break;
-            default:
-                LOGGER.warn("unsupported type: {}", type);
-                throw new IllegalArgumentException("Unsupported date type for TemporalPredicate");
             }
 
             if (offset > 0) {
@@ -143,11 +135,11 @@ public class TemporalPredicate implements Predicate {
     }
 
     public Date getEnd() {
-        return DateUtils.copy(end);
+        return end;
     }
 
     public Date getStart() {
-        return DateUtils.copy(start);
+        return start;
     }
 
     public DateType getType() {

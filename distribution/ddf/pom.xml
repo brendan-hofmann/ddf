@@ -31,6 +31,7 @@
     <properties>
         <distribution.file.name>ddf-${project.version}</distribution.file.name>
         <opendj-embedded.app.version>1.3.1</opendj-embedded.app.version>
+        <install-profiles.app.version>${project.version}</install-profiles.app.version>
     </properties>
     <build>
         <resources>
@@ -47,13 +48,6 @@
             </resource>
         </resources>
         <plugins>
-            <plugin>
-                <groupId>org.owasp</groupId>
-                <artifactId>dependency-check-maven</artifactId>
-                <configuration>
-                    <suppressionFile>${basedir}/dependency-check-maven-config.xml</suppressionFile>
-                </configuration>
-            </plugin>
             <!--
                 Adds all of the feature repositories from DDF Kernel distribution, and this DDF Standard distribution to the Karaf system folder, which is the repo for Karar at runtime.
             -->
@@ -101,7 +95,7 @@
                                     mvn:ddf.admin/admin-app/${project.version}/xml/features
                                 </descriptor>
                                 <descriptor>
-                                    mvn:ddf.distribution/install-profiles/${project.version}/xml/features
+                                    mvn:ddf.distribution/install-profiles/${install-profiles.app.version}/xml/features
                                 </descriptor>
                             </descriptors>
                             <repository>${setup.folder}/${karaf.folder}/system</repository>
@@ -460,7 +454,7 @@
         <dependency>
             <groupId>ddf.distribution</groupId>
             <artifactId>install-profiles</artifactId>
-            <version>${project.version}</version>
+            <version>${install-profiles.app.version}</version>
             <classifier>features</classifier>
             <type>xml</type>
         </dependency>

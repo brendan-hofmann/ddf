@@ -16,7 +16,6 @@ package ddf.platform.scheduler;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
 
@@ -78,11 +77,11 @@ public class CommandJob implements Job {
         }
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        CommandSession commandSession = null;
+        PrintStream output = new PrintStream(byteArrayOutputStream);
 
-        try (PrintStream output = new PrintStream(byteArrayOutputStream, false, StandardCharsets.UTF_8.name())) {
-            commandSession = getCommandProcessor().createSession(null, output, output);
+        CommandSession commandSession = getCommandProcessor().createSession(null, output, output);
 
+        try {
             if (commandInput != null) {
                 try {
                     LOGGER.info("Executing command [{}]", commandInput);
@@ -98,8 +97,6 @@ public class CommandJob implements Job {
                     LOGGER.info("Error with execution. ", e);
                 }
             }
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.info("Unable to produce output", e);
         } finally {
 
             if (commandSession != null) {
