@@ -1,10 +1,10 @@
 /**
  * Copyright (c) Codice Foundation
- * <p>
+ * <p/>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
@@ -19,6 +19,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import javax.servlet.FilterChain;
@@ -46,12 +47,12 @@ import org.codice.ddf.security.handler.api.HandlerResult;
 import org.codice.ddf.security.handler.saml.SAMLAssertionHandler;
 import org.codice.ddf.security.policy.context.ContextPolicy;
 import org.joda.time.DateTime;
-import org.opensaml.Configuration;
-import org.opensaml.common.SAMLObjectBuilder;
-import org.opensaml.common.SAMLVersion;
-import org.opensaml.saml2.core.AuthnRequest;
-import org.opensaml.saml2.core.Issuer;
-import org.opensaml.xml.XMLObjectBuilderFactory;
+import org.opensaml.core.xml.XMLObjectBuilderFactory;
+import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
+import org.opensaml.saml.common.SAMLObjectBuilder;
+import org.opensaml.saml.common.SAMLVersion;
+import org.opensaml.saml.saml2.core.AuthnRequest;
+import org.opensaml.saml.saml2.core.Issuer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -82,11 +83,12 @@ public class IdpHandler implements AuthenticationHandler {
     public static final String UNABLE_TO_SIGN_SAML_AUTHN_REQUEST =
             "Unable to sign SAML Authn Request";
 
-    private static XMLObjectBuilderFactory builderFactory = Configuration.getBuilderFactory();
-
     static {
         OpenSAMLUtil.initSamlEngine();
     }
+
+    private static XMLObjectBuilderFactory builderFactory =
+            XMLObjectProviderRegistrySupport.getBuilderFactory();
 
     @SuppressWarnings("unchecked")
     private static SAMLObjectBuilder<AuthnRequest> authnRequestBuilder =
@@ -190,9 +192,8 @@ public class IdpHandler implements AuthenticationHandler {
         String idpRequest = null;
         String relayState = createRelayState(request);
         try {
-            String queryParams = String.format("SAMLRequest=%s&RelayState=%s",
-                    createAuthnRequest(false),
-                    URLEncoder.encode(relayState, "UTF-8"));
+            String queryParams = String.format("SAMLRequest=%s&RelayState=%s", createAuthnRequest(
+                    false), URLEncoder.encode(relayState, "UTF-8"));
             idpRequest = idpMetadata.getSingleSignOnLocation() + "?" + queryParams;
             UriBuilder idpUri = new UriBuilderImpl(new URI(idpRequest));
 
@@ -307,7 +308,7 @@ public class IdpHandler implements AuthenticationHandler {
     }
 
     private String encodePostRequest(String request) throws WSSecurityException, IOException {
-        return new String(Base64.encodeBase64(request.getBytes()));
+        return new String(Base64.encodeBase64(request.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
     }
 
     private String recreateFullRequestUrl(HttpServletRequest request) {
