@@ -46,13 +46,10 @@
  */
 package org.codice.proxy.http;
 
-import java.io.Externalizable;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -63,14 +60,14 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Route;
+import org.apache.camel.component.http.CamelServlet;
+import org.apache.camel.component.http.HttpConsumer;
+import org.apache.camel.component.http.HttpMessage;
+import org.apache.camel.component.http.helper.HttpHelper;
 import org.apache.camel.component.servlet.DefaultHttpRegistry;
 import org.apache.camel.component.servlet.HttpRegistry;
 import org.apache.camel.component.servlet.ServletEndpoint;
 import org.apache.camel.converter.ObjectConverter;
-import org.apache.camel.http.common.CamelServlet;
-import org.apache.camel.http.common.HttpConsumer;
-import org.apache.camel.http.common.HttpHelper;
-import org.apache.camel.http.common.HttpMessage;
 import org.apache.camel.impl.DefaultExchange;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -79,26 +76,22 @@ import org.slf4j.LoggerFactory;
 /**
  * Camel HTTP servlet which can be used in Camel routes to route servlet invocations in routes.
  */
-public class HttpProxyCamelHttpTransportServlet extends CamelServlet implements Externalizable {
+public class HttpProxyCamelHttpTransportServlet extends CamelServlet {
     private static final long serialVersionUID = -1797014782158930490L;
 
     private static final Logger LOG = LoggerFactory
             .getLogger(HttpProxyCamelHttpTransportServlet.class);
 
-    private transient CamelContext camelContext;
+    private CamelContext camelContext;
 
-    private transient HttpRegistry httpRegistry;
+    private HttpRegistry httpRegistry;
 
     private boolean ignoreDuplicateServletName;
 
-    private Map<String, HttpConsumer> consumers = new ConcurrentHashMap<String, HttpConsumer>();
+    private ConcurrentMap<String, HttpConsumer> consumers = new ConcurrentHashMap<String, HttpConsumer>();
 
     public HttpProxyCamelHttpTransportServlet(CamelContext camelContext) {
         this.camelContext = camelContext;
-    }
-
-    public HttpProxyCamelHttpTransportServlet() {
-
     }
 
     @Override
@@ -291,9 +284,9 @@ public class HttpProxyCamelHttpTransportServlet extends CamelServlet implements 
 
         if (answer == null) {
             log.debug("Consumer Keys: {}", Arrays.toString(consumers.keySet().toArray()));
-            for (Map.Entry<String, HttpConsumer> entry : consumers.entrySet()) {
-                if ((entry.getValue()).getEndpoint().isMatchOnUriPrefix() && path.startsWith(entry.getKey())) {
-                    answer = consumers.get(entry.getKey());
+            for (String key : consumers.keySet()) {
+                if (consumers.get(key).getEndpoint().isMatchOnUriPrefix() && path.startsWith(key)) {
+                    answer = consumers.get(key);
                     break;
                 }
             }
@@ -344,14 +337,5 @@ public class HttpProxyCamelHttpTransportServlet extends CamelServlet implements 
         endpointName = StringUtils.remove(endpointName, "/");
         return endpointName;
     }
-
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-
-    }
 }
+

@@ -63,7 +63,7 @@ public class LocalResourceRetriever implements ResourceRetriever {
         Map<String, Serializable> props = new HashMap<String, Serializable>(properties);
 
         if (bytesToSkip > 0) {
-            props.put(BYTES_TO_SKIP, Long.valueOf(bytesToSkip));
+            props.put(BYTES_TO_SKIP, new Long(bytesToSkip));
         }
 
         for (ResourceReader reader : resourceReaders) {

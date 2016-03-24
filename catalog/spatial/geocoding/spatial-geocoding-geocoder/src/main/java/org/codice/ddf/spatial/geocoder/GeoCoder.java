@@ -14,8 +14,6 @@
  **/
 package org.codice.ddf.spatial.geocoder;
 
-import org.codice.ddf.spatial.geocoding.context.NearbyLocation;
-
 public interface GeoCoder {
     /**
      * Takes a query for a place and returns the most relevant result.
@@ -25,11 +23,4 @@ public interface GeoCoder {
      * @return the {@link GeoResult} most relevant to the query, null if no results were found
      */
     GeoResult getLocation(String location);
-
-    /**
-     *
-     * @param locationWKT - a WKT string describing the area to search
-     * @return a description of the "nearest city"
-     */
-    NearbyLocation getNearbyCity(String locationWKT);
 }
