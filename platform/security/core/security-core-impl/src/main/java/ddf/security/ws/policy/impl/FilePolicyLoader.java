@@ -34,7 +34,7 @@ import ddf.security.ws.policy.PolicyLoader;
  */
 public class FilePolicyLoader implements PolicyLoader {
 
-    private static volatile Document policyDoc;
+    private static Document policyDoc;
 
     /**
      * Creates a new instance of the file policy loader.

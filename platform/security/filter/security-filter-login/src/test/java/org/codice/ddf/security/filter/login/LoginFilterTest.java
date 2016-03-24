@@ -1,10 +1,10 @@
 /**
  * Copyright (c) Codice Foundation
- * <p/>
+ * <p>
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
@@ -49,11 +49,9 @@ import javax.xml.stream.XMLStreamException;
 
 import org.apache.cxf.helpers.DOMUtils;
 import org.apache.cxf.ws.security.tokenstore.SecurityToken;
-import org.apache.wss4j.common.saml.OpenSAMLUtil;
 import org.codice.ddf.security.handler.api.HandlerResult;
 import org.codice.ddf.security.handler.api.SAMLAuthenticationToken;
 import org.codice.ddf.security.handler.api.UPAuthenticationToken;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -87,11 +85,6 @@ public class LoginFilterTest {
         // db.setErrorHandler( new MyErrorHandler());
 
         return db.parse(is);
-    }
-
-    @BeforeClass
-    public static void setUp() {
-        OpenSAMLUtil.initSamlEngine();
     }
 
     @Test
@@ -178,8 +171,8 @@ public class LoginFilterTest {
         FilterConfig filterConfig = mock(FilterConfig.class);
         LoginFilter loginFilter = new LoginFilter(null);
         loginFilter.setSessionFactory(new HttpSessionFactory());
-        ddf.security.service.SecurityManager securityManager =
-                mock(ddf.security.service.SecurityManager.class);
+        ddf.security.service.SecurityManager securityManager = mock(
+                ddf.security.service.SecurityManager.class);
         loginFilter.setSecurityManager(securityManager);
         loginFilter.init(filterConfig);
 
@@ -193,16 +186,17 @@ public class LoginFilterTest {
 
         HttpSession session = mock(HttpSession.class);
         when(servletRequest.getSession(true)).thenReturn(session);
-        when(session.getAttribute(SecurityConstants.SAML_ASSERTION)).thenReturn(new SecurityTokenHolder());
+        when(session.getAttribute(SecurityConstants.SAML_ASSERTION))
+                .thenReturn(new SecurityTokenHolder());
 
         Subject subject = mock(Subject.class, RETURNS_DEEP_STUBS);
         when(securityManager.getSubject(token)).thenReturn(subject);
         SecurityAssertion assertion = mock(SecurityAssertion.class);
         SecurityToken securityToken = mock(SecurityToken.class);
         when(assertion.getSecurityToken()).thenReturn(securityToken);
-        when(subject.getPrincipals()
-                .asList()).thenReturn(Arrays.asList(assertion));
-        when(securityToken.getToken()).thenReturn(readDocument("/good_saml.xml").getDocumentElement());
+        when(subject.getPrincipals().asList()).thenReturn(Arrays.asList(assertion));
+        when(securityToken.getToken())
+                .thenReturn(readDocument("/good_saml.xml").getDocumentElement());
 
         loginFilter.doFilter(servletRequest, servletResponse, filterChain);
     }
@@ -214,8 +208,8 @@ public class LoginFilterTest {
         FilterConfig filterConfig = mock(FilterConfig.class);
         LoginFilter loginFilter = new LoginFilter(null);
         loginFilter.setSessionFactory(new HttpSessionFactory());
-        ddf.security.service.SecurityManager securityManager =
-                mock(ddf.security.service.SecurityManager.class);
+        ddf.security.service.SecurityManager securityManager = mock(
+                ddf.security.service.SecurityManager.class);
         loginFilter.setSecurityManager(securityManager);
         loginFilter.setSignaturePropertiesFile("signature.properties");
         try {
@@ -230,8 +224,7 @@ public class LoginFilterTest {
         SecurityToken securityToken = new SecurityToken();
         Element thisToken = readDocument("/good_saml.xml").getDocumentElement();
         securityToken.setToken(thisToken);
-        SAMLAuthenticationToken samlToken = new SAMLAuthenticationToken(null,
-                securityToken,
+        SAMLAuthenticationToken samlToken = new SAMLAuthenticationToken(null, securityToken,
                 "karaf");
         HandlerResult result = new HandlerResult(HandlerResult.Status.COMPLETED, samlToken);
         servletRequest.setAttribute("ddf.security.token", result);
@@ -261,8 +254,7 @@ public class LoginFilterTest {
         SecurityToken securityToken = new SecurityToken();
         Element thisToken = readDocument("/bad_saml.xml").getDocumentElement();
         securityToken.setToken(thisToken);
-        SAMLAuthenticationToken samlToken = new SAMLAuthenticationToken(null,
-                securityToken,
+        SAMLAuthenticationToken samlToken = new SAMLAuthenticationToken(null, securityToken,
                 "karaf");
         HandlerResult result = new HandlerResult(HandlerResult.Status.COMPLETED, samlToken);
         servletRequest.setAttribute("ddf.security.token", result);

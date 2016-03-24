@@ -311,9 +311,10 @@ public class WfsFilterDelegate extends FilterDelegate<FilterType> {
 
     @Override
     public FilterType or(List<FilterType> filtersToBeOred) {
-        if (filtersToBeOred.contains(null)) {
-            throw new UnsupportedOperationException("Invalid filters found in list of filters!");
+        if (filtersToBeOred.contains(Collections.singleton(null))) {
+            throw new UnsupportedOperationException("Invalid filters found in list of filters.");
         }
+
         return buildAndOrFilter(filtersToBeOred,
                 filterObjectFactory.createOr(new BinaryLogicOpType()));
     }
