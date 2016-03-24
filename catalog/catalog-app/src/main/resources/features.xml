@@ -10,7 +10,7 @@
  * <http://www.gnu.org/licenses/lgpl.html>.
  *
  **/
- -->
+ --> 
 
 <!--
      NOTE: This features XML file uses the Karaf "install" attribute to specify whether a feature
