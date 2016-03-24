@@ -15,7 +15,7 @@
     <suppress>
         <cve>CVE-2007-1085</cve>
     </suppress>
- 
+    
     <!--
         CVE-2007-3150 is a JavaScript injection vulnerability related to Google Desktop which does
         not apply here.
