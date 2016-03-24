@@ -29,7 +29,7 @@
 
     <reference id="encryptionService" interface="ddf.security.encryption.EncryptionService" />
 
-    <reference id="logoutMessage" interface="ddf.security.samlp.LogoutMessage" />
+    <reference id="logoutService" interface="ddf.security.samlp.LogoutService" />
 
 
     <bean id="IdpExceptionMapperProvider"
@@ -53,7 +53,7 @@
         <property name="securityManager" ref="securityManager"/>
         <property name="tokenFactory" ref="tokenFactory" />
         <property name="strictSignature" value="true" />
-        <property name="logoutMessage" ref="logoutMessage" />
+        <property name="logoutService" ref="logoutService" />
         <property name="logoutStates" ref="logoutStates" />
     </bean>
 

@@ -15,9 +15,9 @@ package ddf.security.samlp.impl
 
 import ddf.security.samlp.SamlProtocol
 import ddf.security.samlp.SimpleSign
-import org.opensaml.saml.saml2.core.ArtifactResponse
-import org.opensaml.saml.saml2.core.LogoutRequest
-import org.opensaml.saml.saml2.core.LogoutResponse
+import org.opensaml.saml2.core.ArtifactResponse
+import org.opensaml.saml2.core.LogoutRequest
+import org.opensaml.saml2.core.LogoutResponse
 import spock.lang.Specification
 
 import java.time.Duration
@@ -56,35 +56,35 @@ class SamlValidatorBuilderTest extends Specification {
         'abc'      | null      | null    | 'lkj'      | null
     }
 
-    def 'check requestId'() {
+    def 'check inResponse'() {
         setup:
         def builder = new SamlValidator.Builder(null)
 
         when:
-        builder.setRequestId('xyz')
+        builder.setInResponse('xyz')
 
         then:
-        builder.requestId == 'xyz'
+        builder.inResponse == 'xyz'
 
         when:
-        builder.setRequestId(null)
+        builder.setInResponse(null)
 
         then:
         thrown(IllegalArgumentException)
     }
 
-    def 'check timeout'() {
+    def 'check issueTimeout'() {
         setup:
         def builder = new SamlValidator.Builder(null)
 
         when:
-        builder.setTimeout(Duration.ofSeconds(1))
+        builder.setIssueTimeout(Duration.ofSeconds(1))
 
         then:
-        builder.timeout.equals(Duration.ofSeconds(1))
+        builder.issueTimeout.equals(Duration.ofSeconds(1))
 
         when:
-        builder.setTimeout(null)
+        builder.setIssueTimeout(null)
 
         then:
         thrown(IllegalArgumentException)

@@ -12,9 +12,7 @@
  *
  **/
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>filter</artifactId>
         <groupId>ddf.security.filter</groupId>
@@ -24,6 +22,19 @@
     <name>DDF :: Security :: Filter :: Login</name>
     <artifactId>security-filter-login</artifactId>
     <packaging>bundle</packaging>
+    <dependencyManagement>
+        <dependencies>
+            <!--
+                Forcing Xalan to version 2.7.2 to address security vulnerability CVE-2014-0107. Remove when OpenSaml is
+                updated to a more recent version (see DDF-1216).
+            -->
+            <dependency>
+                <groupId>xalan</groupId>
+                <artifactId>xalan</artifactId>
+                <version>2.7.2</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>ddf.lib</groupId>
@@ -72,9 +83,13 @@
             <artifactId>security-policy-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--
+            Remove Xalan dependency from dependencyManagement section when OpenSaml is updated to a newer version.
+        -->
         <dependency>
             <groupId>org.opensaml</groupId>
-            <artifactId>opensaml-core</artifactId>
+            <artifactId>opensaml</artifactId>
+            <version>2.5.1-1</version>
         </dependency>
         <dependency>
             <groupId>ddf.security.handler</groupId>
@@ -84,7 +99,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>18.0</version>
+            <version>17.0</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -100,22 +115,6 @@
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-            <version>1.53</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
-            <version>1.53</version>
-        </dependency>
-        <dependency>
-            <groupId>xml-apis</groupId>
-            <artifactId>xml-apis</artifactId>
-            <version>1.4.01</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -129,9 +128,7 @@
                             platform-util,
                             common-system,
                             ddf-security-common,
-                            guava,
-                            bcpkix-jdk15on,
-                            bcprov-jdk15on
+                            guava
                         </Embed-Dependency>
                         <Import-Package>
                             org.apache.log4j,
@@ -163,22 +160,22 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.39</minimum>
+                                            <minimum>0.32</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.34</minimum>
+                                            <minimum>0.28</minimum>
                                         </limit>
                                         <limit>
                                             <counter>COMPLEXITY</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.37</minimum>
+                                            <minimum>0.26</minimum>
                                         </limit>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.39</minimum>
+                                            <minimum>0.38</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

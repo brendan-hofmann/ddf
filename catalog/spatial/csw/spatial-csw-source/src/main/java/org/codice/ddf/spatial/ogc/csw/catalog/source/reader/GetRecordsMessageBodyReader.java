@@ -20,7 +20,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
@@ -104,8 +103,7 @@ public class GetRecordsMessageBodyReader implements MessageBodyReader<CswRecordC
         CswRecordCollection cswRecords = null;
 
         try {
-            HierarchicalStreamReader reader = new XppReader(new InputStreamReader(inStream,
-                    StandardCharsets.UTF_8),
+            HierarchicalStreamReader reader = new XppReader(new InputStreamReader(inStream),
                     XmlPullParserFactory.newInstance().newPullParser());
             cswRecords = (CswRecordCollection) xstream.unmarshal(reader, null, argumentHolder);
         } catch (XmlPullParserException e) {
@@ -120,7 +118,7 @@ public class GetRecordsMessageBodyReader implements MessageBodyReader<CswRecordC
             // (with the ExceptionReport) and rethrowing it as a WebApplicatioNException,
             // which CXF will wrap as a ClientException that the CswSource catches, converts
             // to a CswException, and logs.
-            ByteArrayInputStream bis = new ByteArrayInputStream(originalInputStream.getBytes(StandardCharsets.UTF_8));
+            ByteArrayInputStream bis = new ByteArrayInputStream(originalInputStream.getBytes());
             ResponseBuilder responseBuilder = Response.ok(bis);
             responseBuilder.type("text/xml");
             Response response = responseBuilder.build();
