@@ -866,7 +866,7 @@ public class TestWfsFilterDelegate {
         assertThat(literal1, is(LITERAL));
     }
 
-    @Test(expected = UnsupportedOperationException.class)
+    @Test
     public void testLogicalWithNullOrEmpty() throws Exception {
         String mockProperty = "myPropertyName";
         String mockType = "myType";
@@ -894,6 +894,7 @@ public class TestWfsFilterDelegate {
         assertNull(filter);
 
         // Finally, test a null list with an or
+        thrown.expect(NullPointerException.class);
         filter = delegate.or(null);
     }
 
