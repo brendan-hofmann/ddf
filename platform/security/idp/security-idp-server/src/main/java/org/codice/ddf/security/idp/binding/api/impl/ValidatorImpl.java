@@ -18,10 +18,9 @@ import java.util.Map;
 import org.apache.wss4j.common.saml.builder.SAML2Constants;
 import org.codice.ddf.security.idp.binding.api.Validator;
 import org.codice.ddf.security.idp.server.Idp;
-import org.opensaml.saml2.core.AuthnContextClassRef;
-import org.opensaml.saml2.core.AuthnContextComparisonTypeEnumeration;
-import org.opensaml.saml2.core.AuthnRequest;
-import org.opensaml.xml.validation.ValidationException;
+import org.opensaml.saml.saml2.core.AuthnContextClassRef;
+import org.opensaml.saml.saml2.core.AuthnContextComparisonTypeEnumeration;
+import org.opensaml.saml.saml2.core.AuthnRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +28,7 @@ import com.google.common.collect.ImmutableSet;
 
 import ddf.security.samlp.SimpleSign;
 import ddf.security.samlp.SystemCrypto;
+import ddf.security.samlp.ValidationException;
 import ddf.security.samlp.impl.EntityInformation;
 
 public abstract class ValidatorImpl implements Validator {
@@ -90,11 +90,9 @@ public abstract class ValidatorImpl implements Validator {
     @Override
     public void validateRelayState(String relayState) {
         LOGGER.debug("Validating RelayState");
-        if (relayState == null) {
-            throw new IllegalArgumentException("Missing RelayState on IdP request.");
-        }
-        if (relayState.getBytes().length < 0 || relayState.getBytes().length > 80) {
-            LOGGER.warn("RelayState has invalid size: {}", relayState.getBytes().length);
+        if (relayState == null || relayState.length() < 0 || relayState.length() > 80) {
+            LOGGER.warn("RelayState has invalid size: {}",
+                    (relayState == null) ? "no RelayState" : relayState.length());
         }
     }
 
