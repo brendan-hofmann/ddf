@@ -98,7 +98,6 @@
                         </Private-Package>
                         <Export-Package/>
                         <Import-Package>
-                            org.apache.commons.logging; version="[1.1.0,2.0.0)",
                             *;resolution:=optional
                         </Import-Package>
                     </instructions>
@@ -122,7 +121,7 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.34</minimum>
+                                            <minimum>0.35</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
@@ -132,12 +131,12 @@
                                         <limit>
                                             <counter>COMPLEXITY</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.29</minimum>
+                                            <minimum>0.30</minimum>
                                         </limit>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.34</minimum>
+                                            <minimum>0.35</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
