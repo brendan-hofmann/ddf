@@ -154,10 +154,6 @@
             <artifactId>common-system</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -178,8 +174,7 @@
                             solr-factory,
                             noggit,
                             zookeeper,
-                            common-system,
-                            guava
+                            common-system
                         </Embed-Dependency>
                         <Embed-Transitive>true</Embed-Transitive>
                         <Private-Package>

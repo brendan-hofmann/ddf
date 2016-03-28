@@ -23,7 +23,7 @@
     <!-- Register the Transformers -->
     <service interface="ddf.catalog.transform.InputTransformer">
         <service-properties>
-            <entry key="id" value="csw:Record"/>
+            <entry key="id" value="csw"/>
             <entry key="mime-type" value="text/xml"/>
             <entry key="schema" value="http://www.opengis.net/cat/csw/2.0.2"/>
         </service-properties>
@@ -32,7 +32,7 @@
 
     <service interface="ddf.catalog.transform.MetacardTransformer">
         <service-properties>
-            <entry key="id" value="csw:Record"/>
+            <entry key="id" value="csw"/>
             <entry key="mime-type" value="text/xml"/>
             <entry key="schema" value="http://www.opengis.net/cat/csw/2.0.2"/>
         </service-properties>
@@ -48,6 +48,7 @@
     <!-- MetacardTransformer TransformerManager -->
     <bean id="metacardTransformerManager"
           class="org.codice.ddf.spatial.ogc.csw.catalog.transformer.TransformerManager">
+        <argument ref="blueprintBundleContext"/>
         <argument ref="metacardTransformers"/>
     </bean>
 
@@ -62,6 +63,7 @@
     <!-- InputTransformer TransformerManager -->
     <bean id="inputTransformerManager"
           class="org.codice.ddf.spatial.ogc.csw.catalog.transformer.TransformerManager">
+        <argument ref="blueprintBundleContext"/>
         <argument ref="inputTransformers"/>
     </bean>
 
@@ -81,16 +83,12 @@
     </bean>
 
     <service ref="cswTransformProvider" id="CswTransformProvider"
-             interface="com.thoughtworks.xstream.converters.Converter">
-        <service-properties>
-            <entry key="id" value="csw" />
-        </service-properties>
-    </service>
+             interface="com.thoughtworks.xstream.converters.Converter"/>
 
     <service ref="CswQueryResponseTransformer"
              interface="ddf.catalog.transform.QueryResponseTransformer">
         <service-properties>
-            <entry key="id" value="csw:Record"/>
+            <entry key="id" value="csw"/>
             <entry key="mime-type" value="text/xml"/>
             <entry key="schema" value="http://www.opengis.net/cat/csw/2.0.2"/>
         </service-properties>

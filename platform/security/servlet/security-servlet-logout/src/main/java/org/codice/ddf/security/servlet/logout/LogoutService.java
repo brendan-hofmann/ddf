@@ -16,7 +16,6 @@ package org.codice.ddf.security.servlet.logout;
 import static org.boon.Boon.toJson;
 
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,9 +60,12 @@ public class LogoutService {
                 SecurityConstants.SAML_ASSERTION)).getRealmTokenMap();
         Map<String, Subject> realmSubjectMap = new HashMap<>();
 
-        for (Map.Entry<String, SecurityToken> entry : realmTokenMap.entrySet()) {
-            realmSubjectMap.put(entry.getKey(), securityManager.getSubject(entry.getValue()));
+        for (String realm : realmTokenMap.keySet()) {
+            Subject subject = null;
 
+            subject = securityManager.getSubject(realmTokenMap.get(realm));
+
+            realmSubjectMap.put(realm, subject);
         }
 
         List<Map<String, String>> realmToPropMaps = new ArrayList<>();
@@ -90,8 +92,7 @@ public class LogoutService {
             }
         }
 
-        return Response.ok(new ByteArrayInputStream(toJson(realmToPropMaps).getBytes(
-                StandardCharsets.UTF_8)))
+        return Response.ok(new ByteArrayInputStream(toJson(realmToPropMaps).getBytes()))
                 .build();
     }
 

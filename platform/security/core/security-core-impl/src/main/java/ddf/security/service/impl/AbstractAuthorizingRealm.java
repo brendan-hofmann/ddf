@@ -24,10 +24,10 @@ import org.apache.shiro.authz.SimpleAuthorizationInfo;
 import org.apache.shiro.cache.MemoryConstrainedCacheManager;
 import org.apache.shiro.realm.AuthorizingRealm;
 import org.apache.shiro.subject.PrincipalCollection;
-import org.opensaml.core.xml.XMLObject;
-import org.opensaml.core.xml.schema.XSString;
-import org.opensaml.saml.saml2.core.Attribute;
-import org.opensaml.saml.saml2.core.AttributeStatement;
+import org.opensaml.saml2.core.Attribute;
+import org.opensaml.saml2.core.AttributeStatement;
+import org.opensaml.xml.XMLObject;
+import org.opensaml.xml.schema.XSString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +44,7 @@ public abstract class AbstractAuthorizingRealm extends AuthorizingRealm {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAuthorizingRealm.class);
 
-    private static final String SAML_ROLE =
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role";
+    private static final String SAML_ROLE = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role";
 
     private List<Expansion> expansionServiceList;
 
@@ -105,7 +104,7 @@ public abstract class AbstractAuthorizingRealm extends AuthorizingRealm {
     }
 
     /**
-     * Takes an {@link org.opensaml.saml.saml2.core.Attribute} and utilizes the
+     * Takes an {@link org.opensaml.saml2.core.Attribute} and utilizes the
      * {@link ddf.security.expansion.Expansion} service to potentially expand it to a
      * different/enhanced set of attributes. This expansion is controlled by the configuration of
      * the expansion service but relies on the name of this attribute as a key. The returned set of
@@ -129,8 +128,7 @@ public abstract class AbstractAuthorizingRealm extends AuthorizingRealm {
         }
         if (expansionServiceList != null) {
             for (Expansion expansionService : expansionServiceList) {
-                LOGGER.debug("Expanding attributes for {} - original values: {}",
-                        attributeName,
+                LOGGER.debug("Expanding attributes for {} - original values: {}", attributeName,
                         attributeSet);
                 attributeSet = expansionService.expand(attributeName, attributeSet);
             }
