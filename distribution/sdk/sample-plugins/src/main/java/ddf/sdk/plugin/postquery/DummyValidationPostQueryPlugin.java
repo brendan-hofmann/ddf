@@ -13,14 +13,24 @@
  */
 package ddf.sdk.plugin.postquery;
 
-import ddf.catalog.data.Result;
+import ddf.catalog.data.Metacard;
+import ddf.catalog.data.impl.AttributeImpl;
+import ddf.catalog.data.impl.MetacardImpl;
+import ddf.catalog.data.impl.ResultImpl;
+import ddf.catalog.data.types.experimental.Extracted;
 import ddf.catalog.operation.QueryResponse;
+import ddf.catalog.operation.impl.QueryResponseImpl;
 import ddf.catalog.plugin.PluginExecutionException;
 import ddf.catalog.plugin.PostQueryPlugin;
 import ddf.catalog.plugin.StopProcessingException;
 import ddf.catalog.validation.MetacardValidator;
-import ddf.catalog.validation.ValidationException;
-import java.util.List;
+import java.io.StringReader;
+import java.util.stream.Collectors;
+import javax.xml.stream.XMLEventReader;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.events.XMLEvent;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +45,7 @@ public class DummyValidationPostQueryPlugin implements PostQueryPlugin {
 
   private MetacardValidator validator;
 
-  public DummyValidationPostQueryPlugin(MetacardValidator validator) {
-    this.validator = validator;
-  }
+  private XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
 
   public QueryResponse process(QueryResponse input)
       throws PluginExecutionException, StopProcessingException {
@@ -45,25 +53,50 @@ public class DummyValidationPostQueryPlugin implements PostQueryPlugin {
     LOGGER.debug("ENTERING: {}", methodName);
 
     if (input != null) {
-      List<Result> cards = input.getResults();
-
-      // Validate each metacard in the results
-      for (Result card : cards) {
-        // Catch validation errors and warnings on each card
-        try {
-          LOGGER.debug("validating card {}", card.getMetacard().getId());
-          validator.validate(card.getMetacard());
-        } catch (ValidationException e) {
-          LOGGER.error(e.getMessage());
-
-          LOGGER.info("Errors: {}", e.getErrors());
-          LOGGER.info("Warnings: {}", e.getWarnings());
-        }
-      }
+      input =
+          new QueryResponseImpl(
+              input.getRequest(),
+              input
+                  .getResults()
+                  .stream()
+                  .map(
+                      r ->
+                          (r.getMetacard().getAttribute(Extracted.EXTRACTED_TEXT) == null
+                                      || StringUtils.isEmpty(
+                                          (String)
+                                              r.getMetacard()
+                                                  .getAttribute(Extracted.EXTRACTED_TEXT)
+                                                  .getValue()))
+                                  && StringUtils.isNotEmpty(r.getMetacard().getMetadata())
+                              ? new ResultImpl(enrichMetacard(r.getMetacard()))
+                              : r)
+                  .collect(Collectors.toList()),
+              input.getHits());
     }
 
     LOGGER.debug("EXITING: {}", methodName);
 
     return input;
+  }
+
+  private Metacard enrichMetacard(Metacard metacard) {
+    try {
+      XMLEventReader xmlEventReader =
+          xmlInputFactory.createXMLEventReader(new StringReader(metacard.getMetadata()));
+      String longest = "";
+      while (xmlEventReader.hasNext()) {
+        XMLEvent xmlEvent = xmlEventReader.nextEvent();
+        if (xmlEvent.isCharacters()) {
+          String data = xmlEvent.asCharacters().getData();
+          longest = data.length() > longest.length() ? data : longest;
+        }
+      }
+      MetacardImpl metacardImpl = new MetacardImpl(metacard);
+      metacardImpl.setAttribute(new AttributeImpl(Extracted.EXTRACTED_TEXT, longest));
+      return metacardImpl;
+    } catch (XMLStreamException e) {
+      LOGGER.error("FAILURE", e);
+      return metacard;
+    }
   }
 }

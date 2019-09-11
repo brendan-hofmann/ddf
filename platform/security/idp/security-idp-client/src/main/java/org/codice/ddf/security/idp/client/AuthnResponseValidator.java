@@ -73,6 +73,7 @@ public class AuthnResponseValidator {
         simpleSign.validateSignature(
             authnResponse.getSignature(), authnResponse.getDOM().getOwnerDocument());
       } catch (SimpleSign.SignatureException e) {
+        LOGGER.debug("signature validation failed", e);
         throw new ValidationException("Invalid or untrusted signature.");
       }
     }

@@ -57,22 +57,6 @@
                         <Embed-Dependency>
                             catalog-core-api-impl;scope=!test,platform-util
                         </Embed-Dependency>
-                        <Import-Package>
-                            ddf.catalog,
-                            ddf.catalog.data,
-                            ddf.catalog.event,
-                            ddf.catalog.filter,
-                            ddf.catalog.filter.delegate,
-                            ddf.catalog.source,
-                            ddf.catalog.operation,
-                            ddf.catalog.plugin,
-                            ddf.catalog.validation,
-                            org.opengis.filter,
-                            org.opengis.filter.sort,
-                            org.osgi.service.blueprint,
-                            javax.security.auth,
-                            org.slf4j
-                        </Import-Package>
                     </instructions>
                 </configuration>
             </plugin>
